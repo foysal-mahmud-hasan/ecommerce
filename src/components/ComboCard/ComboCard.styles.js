@@ -1,0 +1,160 @@
+import { StyleSheet } from 'react-native';
+import { radius, fonts, fontSize, shadows } from '../../theme';
+
+export const styles = StyleSheet.create({
+  card: {
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+  },
+  visual: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  gradientBlock: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: '70%',
+    height: '70%',
+    opacity: 0.6,
+    transform: [{ skewY: '-6deg' }],
+  },
+  eyebrowRow: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    zIndex: 5,
+  },
+  eyebrowDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  eyebrowText: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.xs,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+  },
+  savingsBox: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    alignItems: 'flex-end',
+    gap: 4,
+    zIndex: 5,
+  },
+  savingsPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+  },
+  savingsText: {
+    fontFamily: fonts.sansSemiBold,
+    fontSize: fontSize.sm,
+    letterSpacing: 0.4,
+  },
+  savingsMeta: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.xxs,
+    letterSpacing: 1.4,
+  },
+  info: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+  },
+  infoLeft: {
+    flex: 1,
+    minWidth: 0,
+  },
+  title: {
+    fontFamily: fonts.serif,
+    fontSize: 22,
+    lineHeight: 24,
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  tagline: {
+    fontFamily: fonts.serifItalic,
+    fontSize: fontSize.md,
+  },
+  infoRight: { alignItems: 'flex-end', flexShrink: 0 },
+  price: {
+    fontFamily: fonts.sansSemiBold,
+    fontSize: fontSize['2xl'],
+  },
+  was: {
+    fontFamily: fonts.sans,
+    fontSize: fontSize.sm,
+    textDecorationLine: 'line-through',
+  },
+});
+
+export const compositionStyles = StyleSheet.create({
+  flatlayWrap: {
+    position: 'absolute',
+    top: 24,
+    left: 24,
+    right: 24,
+    bottom: 24,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+  },
+  flatlayCell: {
+    aspectRatio: 1,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+  stackWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stackCard: {
+    position: 'absolute',
+    width: '38%',
+    aspectRatio: 0.78,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    ...shadows.lg,
+  },
+  lookWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  lookPins: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  lookPin: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#F9F6F1',
+    ...shadows.md,
+  },
+});

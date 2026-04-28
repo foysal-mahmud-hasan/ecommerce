@@ -1,14 +1,29 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
+# local editor and workspace state
+.claude/
+.vscode/
+.idea/
+
+# logs and runtime output
+*.log
+*.log.*
+coverage/
+
+# dependencies and package manager caches
 node_modules/
+.npm/
+.yarn/
+.pnpm-store/
 
 # Expo
 .expo/
+.expo-shared/
 dist/
 web-build/
 expo-env.d.ts
 
+# dependencies
 # Native
 .kotlin/
 *.orig.*
@@ -25,12 +40,17 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+pnpm-debug.log*
+.eslintcache
 
 # macOS
 .DS_Store
+Thumbs.db
 *.pem
 
 # local env files
+.env
+.env.*
 .env*.local
 
 # typescript

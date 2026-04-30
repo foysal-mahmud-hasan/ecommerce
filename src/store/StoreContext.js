@@ -38,6 +38,13 @@ export function StoreProvider({ children }) {
   // ── new: SPA quick-view ────────────────────────────────────────────────
   const [quickViewProductId, setQuickViewProductId] = useState(null);
 
+  // ── new: cart sheet (multi-step inline checkout) ───────────────────────
+  const [cartSheetOpen, setCartSheetOpen] = useState(false);
+  const [cartSheetStep, setCartSheetStep] = useState(0); // 0 review · 1 addr · 2 pay · 3 done
+
+  // ── new: prescription upload sheet ─────────────────────────────────────
+  const [prescriptionSheetOpen, setPrescriptionSheetOpen] = useState(false);
+
   const tenantId = tenant?.id || null;
   const currency = tenant?.currency || { code: 'USD', symbol: '$', position: 'before', decimals: 0 };
 
@@ -206,10 +213,38 @@ export function StoreProvider({ children }) {
   // ── quick-view ─────────────────────────────────────────────────────────
   const openQuickView = useCallback((id) => {
     if (!id) return;
+    // Single-sheet policy: opening one closes the others.
+    setCartSheetOpen(false);
+    setPrescriptionSheetOpen(false);
     setQuickViewProductId(String(id));
   }, []);
 
   const closeQuickView = useCallback(() => setQuickViewProductId(null), []);
+
+  // ── cart sheet ─────────────────────────────────────────────────────────
+  const openCartSheet = useCallback(() => {
+    setQuickViewProductId(null);
+    setPrescriptionSheetOpen(false);
+    setCartSheetStep(0);
+    setCartSheetOpen(true);
+  }, []);
+
+  const closeCartSheet = useCallback(() => {
+    setCartSheetOpen(false);
+    // Reset step lazily so the close animation doesn't show a flash of step 0.
+    setTimeout(() => setCartSheetStep(0), 250);
+  }, []);
+
+  // ── prescription sheet ─────────────────────────────────────────────────
+  const openPrescriptionSheet = useCallback(() => {
+    setQuickViewProductId(null);
+    setCartSheetOpen(false);
+    setPrescriptionSheetOpen(true);
+  }, []);
+
+  const closePrescriptionSheet = useCallback(() => {
+    setPrescriptionSheetOpen(false);
+  }, []);
 
   // ── tenant context value (memoized separately to avoid theme thrash) ──
   const tenantValue = useMemo(
@@ -257,6 +292,16 @@ export function StoreProvider({ children }) {
       quickViewProductId,
       openQuickView,
       closeQuickView,
+      // cart sheet
+      cartSheetOpen,
+      cartSheetStep,
+      setCartSheetStep,
+      openCartSheet,
+      closeCartSheet,
+      // prescription sheet
+      prescriptionSheetOpen,
+      openPrescriptionSheet,
+      closePrescriptionSheet,
     }),
     [
       cart,
@@ -289,6 +334,13 @@ export function StoreProvider({ children }) {
       quickViewProductId,
       openQuickView,
       closeQuickView,
+      cartSheetOpen,
+      cartSheetStep,
+      openCartSheet,
+      closeCartSheet,
+      prescriptionSheetOpen,
+      openPrescriptionSheet,
+      closePrescriptionSheet,
     ],
   );
 

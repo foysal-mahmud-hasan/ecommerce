@@ -9,6 +9,7 @@ export const storageKeys = {
   wishlist: (tenantId) => `${NS}:${tenantId}:wishlist`,
   auth: (tenantId) => `${NS}:${tenantId}:auth`,
   orders: (tenantId) => `${NS}:${tenantId}:orders`,
+  prescriptions: (tenantId) => `${NS}:${tenantId}:prescriptions`,
   credentials: `${NS}:credentials`,
 };
 

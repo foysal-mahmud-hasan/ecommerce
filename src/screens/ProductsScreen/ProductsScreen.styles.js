@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { fonts, fontSize, screenPadding } from '../../theme';
 
 export const styles = StyleSheet.create({
@@ -26,6 +26,16 @@ export const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: fontSize.lg,
     paddingVertical: 0,
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none', outlineWidth: 0 } : {}),
+  },
+  footer: {
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.sm,
+    letterSpacing: 1,
   },
   iconBtn: {
     width: 44,
@@ -40,6 +50,12 @@ export const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: screenPadding,
     paddingBottom: 12,
+  },
+  chipRailScroll: {
+    // ScrollView defaults to flex:1 on react-native-web, which would compete
+    // with the FlatList for vertical space and squash these horizontal rails.
+    flexGrow: 0,
+    flexShrink: 0,
   },
   countRow: {
     paddingHorizontal: screenPadding,

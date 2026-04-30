@@ -2,9 +2,9 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import {
   IconBag,
+  IconGrid,
   IconHeart,
   IconHome,
-  IconSearch,
   IconUser,
 } from '../../src/components/Icons';
 import { fragCartCount, useStore } from '../../src/store/StoreContext';
@@ -44,10 +44,10 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="search"
+        name="products"
         options={{
-          title: 'Search',
-          tabBarIcon: ({ color }) => <IconSearch color={color} size={18} />,
+          title: 'Catalog',
+          tabBarIcon: ({ color }) => <IconGrid color={color} size={18} />,
         }}
       />
       <Tabs.Screen
@@ -78,6 +78,9 @@ export default function TabsLayout() {
           tabBarIcon: ({ color }) => <IconUser color={color} size={18} />,
         }}
       />
+      {/* Search tab kept on disk but hidden from the tab bar — search now
+          lives inline on home. The route is still reachable via /search. */}
+      <Tabs.Screen name="search" options={{ href: null }} />
     </Tabs>
   );
 }

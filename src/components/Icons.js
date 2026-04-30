@@ -147,6 +147,36 @@ export function IconSpark({ size = 14, color = '#000' }) {
   );
 }
 
+export function IconGrid({ size = 18, color = '#000' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={4} y={4} width={7} height={7} rx={1.5} stroke={color} strokeWidth={stroke} />
+      <Rect x={13} y={4} width={7} height={7} rx={1.5} stroke={color} strokeWidth={stroke} />
+      <Rect x={4} y={13} width={7} height={7} rx={1.5} stroke={color} strokeWidth={stroke} />
+      <Rect x={13} y={13} width={7} height={7} rx={1.5} stroke={color} strokeWidth={stroke} />
+    </Svg>
+  );
+}
+
+export function IconUpload({ size = 18, color = '#000' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 16V4M7 9l5-5 5 5" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+export function IconCart({ size = 18, color = '#000' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M3 4h2l2.5 11h11l2-8H6" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx={9} cy={20} r={1.5} stroke={color} strokeWidth={stroke} />
+      <Circle cx={17} cy={20} r={1.5} stroke={color} strokeWidth={stroke} />
+    </Svg>
+  );
+}
+
 export function IconStar({ size = 12, color = '#000', filled = true }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 12 12" fill={filled ? color : 'none'}>

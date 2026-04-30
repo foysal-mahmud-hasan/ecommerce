@@ -48,14 +48,18 @@ export default function BootstrapProvider({ children }) {
         setSplashData(cached.payload);
         setStatus('ready');
         setBootstrapStatus('ready');
-        // background revalidate
+        // background revalidate — only call setTenant if the tenant id
+        // actually changed, otherwise we needlessly clear the cart on every
+        // cold start (which can also confuse Expo Go's fast refresh).
         fetchSplash({ credentials: creds, useMock })
           .then((fresh) => {
             const detected = useMock ? knownTenantId : detectTenantId(fresh.tenant.domainConfig);
             const next = { ...fresh, tenant: { ...fresh.tenant, id: detected } };
             persistSplash(detected, next).catch(() => {});
             setSplashData(next);
-            setTenant(next.tenant).catch(() => {});
+            if (detected !== knownTenantId) {
+              setTenant(next.tenant).catch(() => {});
+            }
           })
           .catch(() => {});
         return;

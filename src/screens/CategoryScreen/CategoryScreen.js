@@ -8,6 +8,7 @@ import MobileHeader from '../../components/MobileHeader';
 import ProductCard from '../../components/ProductCard';
 import { useStore } from '../../store/StoreContext';
 import { layout, useTheme } from '../../theme';
+import { sortInStockFirst } from '../../utils/sortStock';
 import { styles } from './CategoryScreen.styles';
 
 const SORTS = [
@@ -29,11 +30,11 @@ export default function CategoryScreen() {
   const catName = (categories || []).find((c) => String(c.id) === cat)?.name || 'All';
 
   const products = useMemo(() => {
-    const list = productsCache?.byCategoryId?.[cat] || [];
-    if (sort === 'low') return [...list].sort((a, b) => a.price - b.price);
-    if (sort === 'high') return [...list].sort((a, b) => b.price - a.price);
-    if (sort === 'name') return [...list].sort((a, b) => a.name.localeCompare(b.name));
-    return list;
+    let list = productsCache?.byCategoryId?.[cat] || [];
+    if (sort === 'low') list = [...list].sort((a, b) => a.price - b.price);
+    else if (sort === 'high') list = [...list].sort((a, b) => b.price - a.price);
+    else if (sort === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+    return sortInStockFirst(list);
   }, [productsCache, cat, sort]);
 
   return (

@@ -1,15 +1,19 @@
 import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FragButton from '../../components/FragButton';
-import { IconBag, IconSearch } from '../../components/Icons';
+import HeroBanner from '../../components/HeroBanner';
+import { IconBag } from '../../components/Icons';
 import ProductCard from '../../components/ProductCard';
 import ProductCardCompact from '../../components/ProductCardCompact';
 import RemoteImage from '../../components/RemoteImage';
 import SectionHead from '../../components/SectionHead';
 import { fragCartCount, useStore } from '../../store/StoreContext';
 import { layout, useTheme } from '../../theme';
+import { useBreakpoint } from '../../utils/responsive';
+import { sortInStockFirst } from '../../utils/sortStock';
+import HomeSearchBar from './HomeSearchBar';
 import { styles } from './ShopScreen.styles';
 
 // Restaurant home: photo-led, evocative. Hero dish + cuisine rails.
@@ -26,16 +30,24 @@ export default function ShopScreenRestaurant() {
     openQuickView,
   } = useStore();
   const cartCount = fragCartCount(cart);
+  const bp = useBreakpoint();
+  const popularCount = bp === 'desktop' ? 8 : bp === 'tablet' ? 6 : 4;
+  const popularItemWidth =
+    bp === 'desktop' ? '23.5%' : bp === 'tablet' ? '32%' : '48%';
+
+  const [query, setQuery] = useState('');
 
   const all = productsCache?.all || [];
   const heroProduct = useMemo(() => all[0] || null, [all]);
-  const featured = useMemo(() => all.slice(0, 4), [all]);
-  const popular = useMemo(() => all.slice(4, 12), [all]);
+  const popular = useMemo(
+    () => sortInStockFirst(all.slice(4, 4 + popularCount)),
+    [all, popularCount],
+  );
 
   const productsByCategory = useMemo(() => {
     const m = {};
     (categories || []).forEach((c) => {
-      m[c.id] = (productsCache?.byCategoryId?.[c.id] || []).slice(0, 6);
+      m[c.id] = sortInStockFirst(productsCache?.byCategoryId?.[c.id] || []).slice(0, 6);
     });
     return m;
   }, [categories, productsCache]);
@@ -48,6 +60,7 @@ export default function ShopScreenRestaurant() {
         { paddingTop: insets.top + 8, paddingBottom: layout.tabBarHeight + insets.bottom + 24 },
       ]}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
     >
       <View style={styles.topBar}>
         <View>
@@ -65,14 +78,6 @@ export default function ShopScreenRestaurant() {
         </View>
         <View style={styles.topActions}>
           <Pressable
-            onPress={() => router.push('/(tabs)/search')}
-            hitSlop={layout.hitSlop}
-            style={[styles.topIconBtn, { backgroundColor: t.surface, borderColor: t.line }]}
-            accessibilityLabel="Search"
-          >
-            <IconSearch color={t.ink} />
-          </Pressable>
-          <Pressable
             onPress={() => router.push('/(tabs)/cart')}
             hitSlop={layout.hitSlop}
             style={[styles.topIconBtn, { backgroundColor: t.surface, borderColor: t.line }]}
@@ -87,6 +92,14 @@ export default function ShopScreenRestaurant() {
           </Pressable>
         </View>
       </View>
+
+      <HomeSearchBar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder="Search dishes, cuisines"
+      />
+
+      <HeroBanner tenant="restaurant" />
 
       {/* Hero dish */}
       {heroProduct ? (
@@ -161,10 +174,14 @@ export default function ShopScreenRestaurant() {
         <View style={styles.section}>
           <SectionHead eyebrow="Loved" title="Popular tonight" />
           <View style={styles.grid}>
-            {popular.slice(0, 4).map((p) => (
-              <View key={p.id} style={styles.gridItem}>
+            {popular.map((p) => (
+              <View
+                key={p.id}
+                style={[styles.gridItem, { width: popularItemWidth, flexGrow: 0 }]}
+              >
                 <ProductCard
                   product={p}
+                  forceLayout="editorial"
                   onPress={() => openQuickView(p.id)}
                   onLongPress={() => router.push(`/product/${p.id}`)}
                 />

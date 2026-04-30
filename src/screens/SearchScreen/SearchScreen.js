@@ -7,6 +7,7 @@ import { IconChevR, IconSearch, IconX } from '../../components/Icons';
 import ProductCard from '../../components/ProductCard';
 import { useStore } from '../../store/StoreContext';
 import { layout, useTheme } from '../../theme';
+import { sortInStockFirst } from '../../utils/sortStock';
 import { styles } from './SearchScreen.styles';
 
 const RECENTS = ['paracetamol', 'antacid', 'vitamin c'];
@@ -37,10 +38,13 @@ export default function SearchScreen() {
       const needle = q.toLowerCase();
       list = list.filter((p) => p._search.includes(needle));
     }
-    return list.slice(0, 60); // cap visible results to keep render light
+    return sortInStockFirst(list).slice(0, 60); // cap visible results to keep render light
   }, [showResults, productsCache, activeCat, q]);
 
-  const featured = useMemo(() => (productsCache?.all || []).slice(0, 4), [productsCache]);
+  const featured = useMemo(
+    () => sortInStockFirst(productsCache?.all || []).slice(0, 4),
+    [productsCache],
+  );
 
   const activeCatLabel = cats.find((c) => c.id === activeCat)?.label;
   const placeholder = activeCat ? `Search in ${activeCatLabel}…` : 'Search products…';

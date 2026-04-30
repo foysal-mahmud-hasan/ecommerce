@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { fonts, fontSize, radius, screenPadding } from '../../theme';
 
 export const styles = StyleSheet.create({
@@ -41,6 +41,7 @@ export const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 15,
     padding: 0,
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none', outlineWidth: 0 } : {}),
   },
   summaryRow: {
     flexDirection: 'row',

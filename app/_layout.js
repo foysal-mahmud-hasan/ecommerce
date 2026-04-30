@@ -24,6 +24,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from '../src/components/Toast';
 import QuickViewSheet from '../src/components/QuickViewSheet';
+import CartSheet from '../src/components/CartSheet';
+import CartFab from '../src/components/CartFab';
+import PrescriptionSheet from '../src/components/PrescriptionSheet';
 import { StoreProvider } from '../src/store/StoreContext';
 import BootstrapProvider from '../src/bootstrap/BootstrapProvider';
 import { useTheme } from '../src/theme';
@@ -62,10 +65,12 @@ function ThemedShell() {
           */}
           <Stack.Screen name="checkout" />
           <Stack.Screen name="orders" />
-          <Stack.Screen name="products" />
           <Stack.Screen name="tenant-switch" options={{ presentation: 'modal' }} />
         </Stack>
         <QuickViewSheet />
+        <CartSheet />
+        <PrescriptionSheet />
+        <CartFab />
         <Toast bottomOffset={100} />
       </View>
     </View>

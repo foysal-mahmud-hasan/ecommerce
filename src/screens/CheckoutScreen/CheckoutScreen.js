@@ -1,10 +1,10 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FragButton from '../../components/FragButton';
-import { IconShield } from '../../components/Icons';
 import MobileHeader from '../../components/MobileHeader';
+import CheckoutForm, { validateAddress } from '../../components/CheckoutForm';
 import { placeOrder } from '../../api/orders';
 import { fragCartCount, fragCartTotal, useStore } from '../../store/StoreContext';
 import { layout, useTheme } from '../../theme';
@@ -12,38 +12,6 @@ import { formatPrice } from '../../utils/format';
 import { styles } from './CheckoutScreen.styles';
 
 const STEPS = ['Address', 'Payment'];
-
-const PAYMENT_OPTIONS = [
-  { id: 'cod', label: 'Cash on delivery', sub: 'Pay in cash when your order arrives.' },
-  { id: 'bkash', label: 'bKash', sub: "Mobile money — we'll redirect at checkout." },
-  { id: 'nagad', label: 'Nagad', sub: "Mobile money — we'll redirect at checkout." },
-];
-
-function Field({ label, placeholder, value, onChange, error, t, keyboardType }) {
-  return (
-    <View style={styles.field}>
-      <View style={styles.fieldLabelRow}>
-        <Text style={[styles.fieldLabel, { color: t.ink3 }]}>{label}</Text>
-        {error ? <Text style={[styles.fieldError, { color: t.sale }]}>· {error}</Text> : null}
-      </View>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={t.ink3}
-        keyboardType={keyboardType}
-        style={[
-          styles.input,
-          {
-            backgroundColor: t.surface,
-            borderColor: error ? t.sale : t.line,
-            color: t.ink,
-          },
-        ]}
-      />
-    </View>
-  );
-}
 
 export default function CheckoutScreen() {
   const t = useTheme();
@@ -63,7 +31,7 @@ export default function CheckoutScreen() {
   const grand = total;
   const count = fragCartCount(cart);
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0); // 0 address · 1 payment
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     name: auth?.user?.name || '',
@@ -77,22 +45,12 @@ export default function CheckoutScreen() {
 
   const onChange = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
-  function validate(fields) {
-    const e = {};
-    fields.forEach((f) => {
-      if (!form[f] || String(form[f]).trim().length < 2) e[f] = 'Required';
-    });
-    if (fields.includes('phone') && form.phone && form.phone.replace(/\D/g, '').length < 7) {
-      e.phone = 'Invalid';
-    }
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  }
-
   async function next() {
-    if (step === 1 && !validate(['name', 'phone', 'line1', 'city'])) return;
-    if (step < 2) {
-      setStep(step + 1);
+    if (step === 0) {
+      const { ok, errors: e } = validateAddress(form);
+      setErrors(e);
+      if (!ok) return;
+      setStep(1);
       return;
     }
     setBusy(true);
@@ -137,7 +95,7 @@ export default function CheckoutScreen() {
       >
         <View style={styles.stepper}>
           {STEPS.map((label, i) => {
-            const active = i < step;
+            const active = i <= step;
             return (
               <View key={label} style={styles.stepCol}>
                 <View style={[styles.stepBar, { backgroundColor: active ? t.ink : t.line }]} />
@@ -149,50 +107,7 @@ export default function CheckoutScreen() {
           })}
         </View>
 
-        {step === 1 && (
-          <View>
-            <Field label="FULL NAME" placeholder="" value={form.name} onChange={onChange('name')} error={errors.name} t={t} />
-            <Field label="MOBILE" placeholder="01XXXXXXXXX" value={form.phone} onChange={onChange('phone')} error={errors.phone} t={t} keyboardType="phone-pad" />
-            <Field label="ADDRESS" placeholder="House, road, area" value={form.line1} onChange={onChange('line1')} error={errors.line1} t={t} />
-            <View style={styles.fieldRow}>
-              <View style={styles.fieldCity}>
-                <Field label="CITY" placeholder="Dhaka" value={form.city} onChange={onChange('city')} error={errors.city} t={t} />
-              </View>
-              <View style={styles.fieldZip}>
-                <Field label="POSTAL" placeholder="" value={form.zip} onChange={onChange('zip')} error={errors.zip} t={t} keyboardType="number-pad" />
-              </View>
-            </View>
-          </View>
-        )}
-
-        {step === 2 && (
-          <View>
-            {PAYMENT_OPTIONS.map((opt) => {
-              const active = form.payment === opt.id;
-              return (
-                <Pressable
-                  key={opt.id}
-                  onPress={() => setForm((f) => ({ ...f, payment: opt.id }))}
-                  style={[
-                    styles.shipOpt,
-                    { backgroundColor: t.surface, borderColor: active ? t.ink : t.line },
-                  ]}
-                >
-                  <View style={styles.shipOptText}>
-                    <Text style={[styles.shipOptLabel, { color: t.ink }]}>{opt.label}</Text>
-                    <Text style={[styles.shipOptSub, { color: t.ink3 }]}>{opt.sub}</Text>
-                  </View>
-                </Pressable>
-              );
-            })}
-            <View style={styles.encRow}>
-              <IconShield color={t.ink3} size={14} />
-              <Text style={[styles.encText, { color: t.ink3 }]}>
-                Demo checkout — no real charge will occur.
-              </Text>
-            </View>
-          </View>
-        )}
+        <CheckoutForm step={step} form={form} onChange={onChange} errors={errors} />
 
         <View style={[styles.summary, { backgroundColor: t.surfaceAlt }]}>
           <Text style={[styles.summaryEyebrow, { color: t.ink3 }]}>
@@ -232,7 +147,7 @@ export default function CheckoutScreen() {
         ]}
       >
         <FragButton variant="primary" size="lg" full onPress={next} disabled={busy}>
-          {busy ? 'Placing…' : step < 2 ? 'Continue' : `Place order · ${formatPrice(grand, currency)}`}
+          {busy ? 'Placing…' : step < 1 ? 'Continue' : `Place order · ${formatPrice(grand, currency)}`}
         </FragButton>
       </View>
     </View>

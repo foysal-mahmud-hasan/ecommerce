@@ -20,6 +20,7 @@ import { useStore } from '../../store/StoreContext';
 import { layout, useTheme } from '../../theme';
 import { formatPrice, percentOff } from '../../utils/format';
 import { useBreakpoint } from '../../utils/responsive';
+import { sortInStockFirst } from '../../utils/sortStock';
 import { styles } from './ProductScreen.styles';
 
 const PERKS = [
@@ -70,9 +71,11 @@ export default function ProductScreen() {
   const discount = percentOff(product.price, product.was);
   const related = useMemo(
     () =>
-      (productsCache?.byCategoryId?.[String(product.categoryId)] || [])
-        .filter((p) => p.id !== product.id)
-        .slice(0, 8),
+      sortInStockFirst(
+        (productsCache?.byCategoryId?.[String(product.categoryId)] || []).filter(
+          (p) => p.id !== product.id,
+        ),
+      ).slice(0, 8),
     [productsCache, product],
   );
 

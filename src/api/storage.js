@@ -4,7 +4,9 @@ const NS = 'frag:v1';
 
 export const storageKeys = {
   tenant: `${NS}:tenant`,
-  splash: (tenantId) => `${NS}:${tenantId}:splash`,
+  // splash key bumped to v2 after image base URL changed (storage prefix). v1
+  // caches contained pre-fix URLs that 404 — rotate so users re-fetch.
+  splash: (tenantId) => `${NS}:${tenantId}:splash_v2`,
   cart: (tenantId) => `${NS}:${tenantId}:cart`,
   wishlist: (tenantId) => `${NS}:${tenantId}:wishlist`,
   auth: (tenantId) => `${NS}:${tenantId}:auth`,

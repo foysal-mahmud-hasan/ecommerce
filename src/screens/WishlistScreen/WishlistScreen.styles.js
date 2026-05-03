@@ -31,8 +31,7 @@ export const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 14,
     rowGap: 22,
   },
-  gridItem: { width: '48%' },
+  gridItem: {},
 });

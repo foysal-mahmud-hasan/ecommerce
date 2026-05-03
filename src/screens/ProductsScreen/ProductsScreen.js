@@ -1,11 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Chip from '../../components/Chip';
+import ChipRail from '../../components/ChipRail';
 import { IconSearch, IconSliders, IconX } from '../../components/Icons';
 import MobileHeader from '../../components/MobileHeader';
 import ProductCard from '../../components/ProductCard';
+import ViewToggle from '../../components/ViewToggle';
 import { useStore } from '../../store/StoreContext';
 import { layout, useTheme } from '../../theme';
 import { useBreakpoint } from '../../utils/responsive';
@@ -27,7 +29,7 @@ export default function ProductsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const bp = useBreakpoint();
-  const { categories, productsCache, openQuickView } = useStore();
+  const { categories, productsCache } = useStore();
   const params = useLocalSearchParams();
   const seedQuery = typeof params.q === 'string' ? params.q : '';
 
@@ -35,13 +37,20 @@ export default function ProductsScreen() {
   const [activeCategoryId, setActiveCategoryId] = useState('all');
   const [sort, setSort] = useState('featured');
   const [page, setPage] = useState(0);
+  const [view, setView] = useState(bp === 'mobile' ? 'list' : 'grid');
   const debouncedQuery = useDebounced(query, 200);
 
-  // 2 cols mobile, 3 tablet, 5 desktop. Compact card image (4:5) keeps each
-  // tile short so multiple rows fit per scroll.
-  const numColumns = bp === 'desktop' ? 5 : bp === 'tablet' ? 3 : 2;
+  // Grid: 2 cols mobile, 3 tablet, 4 desktop. List: always 1 column.
+  // (Was 5 cols on desktop — too cramped at the 1280pt cap; 4 matches the
+  // home rails so the visual rhythm stays consistent.)
+  const numColumns = view === 'list' ? 1 : bp === 'desktop' ? 4 : bp === 'tablet' ? 3 : 2;
+  const gridGap = 14;
   const cardWidthPct =
-    numColumns === 5 ? '18.8%' : numColumns === 3 ? '32%' : '48%';
+    view === 'list'
+      ? '100%'
+      : Platform.OS === 'web'
+        ? `calc(${100 / numColumns}% - ${(gridGap * (numColumns - 1)) / numColumns}px)`
+        : `${(100 - (numColumns - 1) * 1.5) / numColumns}%`;
 
   // Apply text + category filter, then sort, then partition by stock so OOS
   // items always sink to the end of the list.
@@ -78,17 +87,21 @@ export default function ProductsScreen() {
 
   const renderItem = useCallback(
     ({ item }) => (
-      <View style={{ width: cardWidthPct }}>
+      <View
+        style={{
+          width: cardWidthPct,
+          flexGrow: 0,
+          flexShrink: 0,
+        }}
+      >
         <ProductCard
           product={item}
-          forceLayout="editorial"
-          compact
-          onPress={() => openQuickView(item.id)}
-          onLongPress={() => router.push(`/product/${item.id}`)}
+          forceLayout={view === 'list' ? 'clinical' : 'editorial'}
+          compact={view === 'grid'}
         />
       </View>
     ),
-    [openQuickView, router, cardWidthPct],
+    [cardWidthPct, view],
   );
 
   const keyExtractor = useCallback((item) => item.id, []);
@@ -141,12 +154,7 @@ export default function ProductsScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chipRailScroll}
-        contentContainerStyle={styles.chipRail}
-      >
+      <ChipRail paddingHorizontal={16}>
         <Chip active={activeCategoryId === 'all'} onPress={() => setActiveCategoryId('all')}>
           All
         </Chip>
@@ -159,35 +167,31 @@ export default function ProductsScreen() {
             {c.name}
           </Chip>
         ))}
-      </ScrollView>
+      </ChipRail>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chipRailScroll}
-        contentContainerStyle={styles.chipRail}
-      >
+      <ChipRail paddingHorizontal={16}>
         {SORTS.map((s) => (
           <Chip key={s.id} active={sort === s.id} onPress={() => setSort(s.id)}>
             {s.label}
           </Chip>
         ))}
-      </ScrollView>
+      </ChipRail>
 
-      <View style={styles.countRow}>
+      <View style={[styles.countRow, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
         <Text style={[styles.count, { color: t.ink3 }]}>
           {filtered.length} {filtered.length === 1 ? 'product' : 'products'}
           {hasMore ? ` · showing ${visible.length}` : ''}
         </Text>
+        <ViewToggle value={view} onChange={setView} />
       </View>
 
       <FlatList
-        key={numColumns}
+        key={`${view}-${numColumns}`}
         data={visible}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         numColumns={numColumns}
-        columnWrapperStyle={styles.gridRow}
+        columnWrapperStyle={numColumns > 1 ? styles.gridRow : undefined}
         contentContainerStyle={[
           styles.grid,
           { paddingBottom: layout.tabBarHeight + insets.bottom + 24 },

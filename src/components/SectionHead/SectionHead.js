@@ -10,6 +10,7 @@ export default function SectionHead({
   action,
   onAction,
   serif = true,
+  rightSlot,
 }) {
   const t = useTheme();
   return (
@@ -24,14 +25,17 @@ export default function SectionHead({
           {title}
         </Text>
       </View>
-      {action ? (
-        <Pressable onPress={onAction} hitSlop={layout.hitSlop} style={styles.action}>
-          <Text style={[styles.actionText, { color: t.ink2, borderColor: t.lineStrong }]}>
-            {action}
-          </Text>
-          <IconChevR color={t.ink2} size={14} />
-        </Pressable>
-      ) : null}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        {action ? (
+          <Pressable onPress={onAction} hitSlop={layout.hitSlop} style={styles.action}>
+            <Text style={[styles.actionText, { color: t.terra, borderColor: t.lineStrong }]}>
+              {action}
+            </Text>
+            <IconChevR color={t.terra} size={14} />
+          </Pressable>
+        ) : null}
+        {rightSlot}
+      </View>
     </View>
   );
 }

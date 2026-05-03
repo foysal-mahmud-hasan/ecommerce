@@ -38,6 +38,18 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
   },
+  spotlight: {
+    position: 'absolute',
+    top: 56,
+    left: 0,
+    right: 0,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web'
+      ? { boxShadow: '0 12px 40px rgba(15, 23, 42, 0.12)' }
+      : { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 24, elevation: 12 }),
+  },
   resultsScroll: {
     paddingVertical: 4,
   },

@@ -1,14 +1,25 @@
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CategoryTile from '../../components/CategoryTile';
 import Chip from '../../components/Chip';
+import ChipRail from '../../components/ChipRail';
+import Footer from '../../components/Footer';
 import HeroBanner from '../../components/HeroBanner';
-import { IconBag, IconChevR } from '../../components/Icons';
+import {
+  IconBag,
+  IconBottle,
+  IconChevR,
+  IconPill,
+  IconStethoscope,
+} from '../../components/Icons';
+import Logo from '../../components/Logo';
 import PrescriptionUploadCard from '../../components/PrescriptionUploadCard';
 import ProductCard from '../../components/ProductCard';
 import RemoteImage from '../../components/RemoteImage';
 import SectionHead from '../../components/SectionHead';
+import ViewToggle from '../../components/ViewToggle';
 import { fragCartCount, useStore } from '../../store/StoreContext';
 import { layout, useTheme } from '../../theme';
 import { useBreakpoint } from '../../utils/responsive';
@@ -16,9 +27,9 @@ import { sortInStockFirst } from '../../utils/sortStock';
 import HomeSearchBar from './HomeSearchBar';
 import { styles } from './ShopScreen.styles';
 
-const TOP_BRAND_LIMIT = 30;
+const TOP_BRAND_LIMIT = 12;
 
-// Pharma home: info-dense, photos optional. Top-brand rail + product rails.
+// Pharma home: green-themed, dense product list with per-section view toggle.
 // COMBOS-DISABLED-V1 — combo rail removed.
 export default function ShopScreenPharma() {
   const t = useTheme();
@@ -26,20 +37,23 @@ export default function ShopScreenPharma() {
   const insets = useSafeAreaInsets();
   const bp = useBreakpoint();
   const isWide = bp === 'desktop' || bp === 'tablet';
-  // Match the catalog grid: 4 cols desktop, 3 cols tablet. 2 cols on a 1280pt
-  // canvas makes each card ~600pt wide which feels oversized.
-  const gridItemWidth = bp === 'desktop' ? '23.5%' : bp === 'tablet' ? '32%' : '48%';
+  const cardCols = bp === 'desktop' ? 4 : bp === 'tablet' ? 3 : 2;
+  // % per cell after subtracting (cardCols - 1) gap slots. Gap is fixed pt;
+  // we let flexBasis carry the share and rely on `flexGrow: 0` so the row
+  // doesn't bleed past 100%.
+  const cardCellBasis = `${100 / cardCols}%`;
   const {
     cart,
     productsCache,
     categories,
-    tenant,
     openQuickView,
     openPrescriptionSheet,
   } = useStore();
   const cartCount = fragCartCount(cart);
 
   const [query, setQuery] = useState('');
+  const [searchedView, setSearchedView] = useState(isWide ? 'grid' : 'list');
+  const [vitaminView, setVitaminView] = useState(isWide ? 'grid' : 'list');
 
   const all = productsCache?.all || [];
   const topBrands = useMemo(
@@ -49,237 +63,310 @@ export default function ShopScreenPharma() {
         .slice(0, TOP_BRAND_LIMIT),
     [categories],
   );
-  // On wide layouts 4 cols × 2 rows = 8, 3 cols × 2 rows = 6.
-  // Mobile list is dense, so 6 stays comfortable. Pick a per-bp count.
+
+  const tiles = useMemo(
+    () => [
+      {
+        key: 'rx',
+        label: 'Prescription Medicines',
+        icon: <IconPill size={20} color={t.categoryAccentMint} />,
+        bg: t.categoryMint,
+        accent: t.categoryAccentMint,
+        target: '/products?bucket=prescription',
+      },
+      {
+        key: 'otc',
+        label: 'OTC Medicines',
+        icon: <IconPill size={20} color={t.categoryAccentSage} />,
+        bg: t.categorySage,
+        accent: t.categoryAccentSage,
+        target: '/products?bucket=otc',
+      },
+      {
+        key: 'vit',
+        label: 'Vitamins & Supplements',
+        icon: <IconBottle size={20} color={t.categoryAccentPeach} />,
+        bg: t.categoryPeach,
+        accent: t.categoryAccentPeach,
+        target: '/products?bucket=vitamins',
+      },
+      {
+        key: 'dev',
+        label: 'Medical Devices',
+        icon: <IconStethoscope size={20} color={t.categoryAccentLilac} />,
+        bg: t.categoryLilac,
+        accent: t.categoryAccentLilac,
+        target: '/products?bucket=devices',
+      },
+    ],
+    [t],
+  );
+
   const wideCount = bp === 'desktop' ? 8 : bp === 'tablet' ? 6 : 6;
-  const featured = useMemo(() => sortInStockFirst(all).slice(0, wideCount), [all, wideCount]);
+  const mostSearched = useMemo(
+    () => sortInStockFirst(all).slice(0, wideCount),
+    [all, wideCount],
+  );
   const onSale = useMemo(
     () => sortInStockFirst(all.filter((p) => p.was)).slice(0, 8),
     [all],
   );
-  const newest = useMemo(
-    () => sortInStockFirst([...all].slice(-16).reverse()).slice(0, wideCount),
-    [all, wideCount],
-  );
+  const vitaminProducts = useMemo(() => {
+    const vitaminCat = (categories || []).find((c) =>
+      /vitamin|supplement/i.test(c.name || ''),
+    );
+    if (vitaminCat) {
+      const list = productsCache?.byCategoryId?.[String(vitaminCat.id)] || [];
+      if (list.length > 0) return sortInStockFirst(list).slice(0, wideCount);
+    }
+    return sortInStockFirst([...all].slice(-16).reverse()).slice(0, wideCount);
+  }, [all, categories, productsCache, wideCount]);
+
+  const renderRail = (products, view) => {
+    if (view === 'grid') {
+      const gap = 14;
+      // Each cell takes `100/cols%` minus its share of the row gap, so the
+      // row exactly fills the parent without leaving an empty right strip.
+      const cellWidth = `calc(${100 / cardCols}% - ${(gap * (cardCols - 1)) / cardCols}px)`;
+      return (
+        <View style={[styles.grid, { gap }]}>
+          {products.map((p) => (
+            <View
+              key={p.id}
+              style={[
+                styles.gridItem,
+                Platform.OS === 'web'
+                  ? { width: cellWidth, flexGrow: 0, flexShrink: 0, flexBasis: 'auto' }
+                  : { flexBasis: cardCellBasis, flexGrow: 0, flexShrink: 0, paddingRight: gap },
+              ]}
+            >
+              <ProductCard product={p} forceLayout="editorial" />
+            </View>
+          ))}
+        </View>
+      );
+    }
+    return (
+      <View style={{ gap: 10 }}>
+        {products.map((p) => (
+          <ProductCard
+            key={p.id}
+            product={p}
+            forceLayout="clinical"
+          />
+        ))}
+      </View>
+    );
+  };
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: t.bg }]}
-      contentContainerStyle={[
-        styles.scrollContent,
-        { paddingTop: insets.top + 8, paddingBottom: layout.tabBarHeight + insets.bottom + 24 },
-      ]}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={styles.topBar}>
-        <View>
-          <Text style={[styles.season, { color: t.ink3, fontFamily: t.fonts.mono }]}>PHARMACY</Text>
-          <Text style={[styles.brand, { color: t.ink, fontFamily: t.fonts.display }]}>
-            {tenant?.name || 'Store'}
-          </Text>
+    <View style={[styles.container, { backgroundColor: t.bg }]}>
+      {/* Sticky header — sits above the scroll content so it stays put while
+          the body scrolls. Mirrors the bottom tab bar's behavior. */}
+      <View
+        style={[
+          styles.stickyHeader,
+          {
+            backgroundColor: t.bg,
+            borderBottomColor: t.line,
+            paddingTop: insets.top + 8,
+          },
+        ]}
+      >
+        <View style={styles.topBar}>
+          <Logo />
+          <View style={styles.topActions}>
+            <Pressable
+              onPress={() => router.push('/orders')}
+              hitSlop={layout.hitSlop}
+              style={[
+                styles.ordersBtn,
+                { backgroundColor: t.surface, borderColor: t.line },
+              ]}
+              accessibilityLabel="My Orders"
+            >
+              <IconBag color={t.ink} size={14} />
+              <Text style={[styles.ordersText, { color: t.ink, fontFamily: t.fonts.sansMedium }]}>
+                My Orders
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/(tabs)/cart')}
+              hitSlop={layout.hitSlop}
+              style={[styles.topIconBtn, { backgroundColor: t.surface, borderColor: t.line }]}
+              accessibilityLabel="Cart"
+            >
+              <IconBag color={t.ink} />
+              {cartCount > 0 ? (
+                <View style={[styles.topBadge, { backgroundColor: t.terra }]}>
+                  <Text style={styles.topBadgeText}>{cartCount}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          </View>
         </View>
-        <View style={styles.topActions}>
-          <Pressable
-            onPress={() => router.push('/(tabs)/cart')}
-            hitSlop={layout.hitSlop}
-            style={[styles.topIconBtn, { backgroundColor: t.surface, borderColor: t.line }]}
-            accessibilityLabel="Cart"
-          >
-            <IconBag color={t.ink} />
-            {cartCount > 0 ? (
-              <View style={[styles.topBadge, { backgroundColor: t.terra }]}>
-                <Text style={styles.topBadgeText}>{cartCount}</Text>
-              </View>
-            ) : null}
-          </Pressable>
+
+        <HomeSearchBar
+          query={query}
+          onQueryChange={setQuery}
+          placeholder="Search medicines, health products..."
+        />
+      </View>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: layout.tabBarHeight + insets.bottom + 24 },
+        ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+
+      <HeroBanner tenant="pharma" />
+
+      <PrescriptionUploadCard onPress={openPrescriptionSheet} />
+
+      {/* Categories chip rail — backend categories, capped at 12, horizontal scroll for overflow.
+          react-native-web ScrollView won't scroll horizontally unless its
+          flex parent is constrained; the wrapper below pins width:100% +
+          overflow:hidden + minWidth:0 so the inner ScrollView clips and
+          scrolls on its own. */}
+      {topBrands.length > 0 ? (
+        <View style={[styles.sectionWide, { paddingTop: 24 }]}>
+          <ChipRail>
+            {topBrands.map((c, i) => (
+              <Chip
+                key={c.id}
+                active={i === 0}
+                onPress={() => router.push(`/category/${c.id}`)}
+              >
+                {c.name}
+              </Chip>
+            ))}
+          </ChipRail>
+        </View>
+      ) : null}
+
+      {/* 2x2 (mobile) / 1x4 (wide) category tile grid — flex children fill the
+          row exactly so there's no right-edge gap on web. */}
+      <View style={[styles.section, { paddingTop: 16 }]}>
+        <View style={styles.tileGrid}>
+          {tiles.map((tile) => (
+            <View
+              key={tile.key}
+              style={[
+                styles.tileCell,
+                isWide ? null : { flexBasis: '48%', flexGrow: 0 },
+              ]}
+            >
+              <CategoryTile
+                label={tile.label}
+                icon={tile.icon}
+                bg={tile.bg}
+                accent={tile.accent}
+                onPress={() => router.push(tile.target)}
+              />
+            </View>
+          ))}
         </View>
       </View>
 
-      {/* Inline search — replaces the old "search shortcut" Pressable */}
-      <HomeSearchBar
-        query={query}
-        onQueryChange={setQuery}
-        placeholder="Search medicines, brands, devices"
-      />
+      {/* Most Searched Today */}
+      <View style={styles.section}>
+        <SectionHead
+          title="Most Searched Today"
+          action="View all"
+          onAction={() => router.push('/products')}
+          rightSlot={<ViewToggle value={searchedView} onChange={setSearchedView} />}
+        />
+        {renderRail(mostSearched, searchedView)}
+      </View>
 
-      {/* Home content stays visible underneath the search dropdown so the
-          user feels like they opened a menu, not navigated to a new page. */}
-      <HeroBanner tenant="pharma" />
-
-          <PrescriptionUploadCard onPress={openPrescriptionSheet} />
-
-          {/* Top brands — 30 chips horizontal scroll, "View all" trailing */}
-          <View style={[styles.sectionWide, { paddingTop: 28 }]}>
-            <View style={styles.sectionInner}>
-              <SectionHead
-                eyebrow="Shop by"
-                title="Top brands"
-                action="All"
-                onAction={() => router.push('/products')}
-              />
+      {/* Sale rail (kept) */}
+      {onSale.length > 0 ? (
+        <View style={styles.sectionWide}>
+          <View style={[styles.sectionInner, styles.flashHeader]}>
+            <View>
+              <Text style={[styles.flashEyebrow, { color: t.sale, fontFamily: t.fonts.mono }]}>
+                LIMITED TIME
+              </Text>
+              <Text style={[styles.flashTitle, { color: t.ink, fontFamily: t.fonts.display }]}>
+                On sale
+              </Text>
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+            <Pressable
+              hitSlop={layout.hitSlop}
+              style={styles.allLink}
+              onPress={() => router.push('/products')}
             >
-              {topBrands.map((c) => (
-                <Chip key={c.id} onPress={() => router.push(`/category/${c.id}`)}>
-                  {c.name}
-                </Chip>
-              ))}
-              <Chip onPress={() => router.push('/products')} active>
-                View all →
-              </Chip>
-            </ScrollView>
+              <Text style={[styles.allLinkText, { color: t.terra, fontFamily: t.fonts.sans }]}>
+                All deals
+              </Text>
+              <IconChevR color={t.terra} size={14} />
+            </Pressable>
           </View>
-
-          {/* Featured — 4-col (desktop) / 3-col (tablet) editorial grid on web,
-              vertical clinical list on mobile */}
-          <View style={styles.section}>
-            <SectionHead
-              eyebrow="Right now"
-              title="Featured"
-              action="See all"
-              onAction={() => router.push('/products')}
-            />
-            {isWide ? (
-              <View style={styles.grid}>
-                {featured.map((p) => (
-                  <View key={p.id} style={[styles.gridItem, { width: gridItemWidth, flexGrow: 0 }]}>
-                    <ProductCard
-                      product={p}
-                      forceLayout="editorial"
-                      onPress={() => openQuickView(p.id)}
-                      onLongPress={() => router.push(`/product/${p.id}`)}
-                    />
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View style={{ gap: 10 }}>
-                {featured.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    onPress={() => openQuickView(p.id)}
-                    onLongPress={() => router.push(`/product/${p.id}`)}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-
-          {/* Sale rail */}
-          {onSale.length > 0 ? (
-            <View style={styles.sectionWide}>
-              <View style={[styles.sectionInner, styles.flashHeader]}>
-                <View>
-                  <Text style={[styles.flashEyebrow, { color: t.sale, fontFamily: t.fonts.mono }]}>
-                    LIMITED TIME
-                  </Text>
-                  <Text style={[styles.flashTitle, { color: t.ink, fontFamily: t.fonts.display }]}>
-                    On sale
-                  </Text>
+          <View style={{ width: '100%', minWidth: 0, overflow: 'hidden' }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.flashRail}
+            snapToInterval={162}
+            decelerationRate="fast"
+            style={
+              Platform.OS === 'web'
+                ? { overflowX: 'auto', overflowY: 'hidden', flexGrow: 0, flexShrink: 1 }
+                : undefined
+            }
+          >
+            {onSale.map((p) => (
+              <View key={p.id} style={{ width: 150 }}>
+                <View style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden' }}>
+                  <RemoteImage product={p} fit radius={8} />
                 </View>
-                <Pressable
-                  hitSlop={layout.hitSlop}
-                  style={styles.allLink}
-                  onPress={() => router.push('/products')}
+                <Text
+                  numberOfLines={2}
+                  style={{
+                    fontFamily: t.fonts.sansMedium,
+                    fontSize: 13,
+                    color: t.ink,
+                    marginTop: 8,
+                  }}
                 >
-                  <Text style={[styles.allLinkText, { color: t.ink2, fontFamily: t.fonts.sans }]}>
-                    All deals
+                  {p.name}
+                </Text>
+                <Pressable onPress={() => openQuickView(p.id)} style={{ marginTop: 6 }}>
+                  <Text
+                    style={{
+                      fontFamily: t.fonts.sansSemiBold,
+                      fontSize: 12,
+                      color: t.terra,
+                    }}
+                  >
+                    Add quick →
                   </Text>
-                  <IconChevR color={t.ink2} size={14} />
                 </Pressable>
               </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.flashRail}
-                snapToInterval={162}
-                decelerationRate="fast"
-              >
-                {onSale.map((p) => (
-                  <View key={p.id} style={{ width: 150 }}>
-                    <View style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden' }}>
-                      <RemoteImage product={p} fit radius={8} />
-                    </View>
-                    <Text
-                      numberOfLines={2}
-                      style={{
-                        fontFamily: t.fonts.sansMedium,
-                        fontSize: 13,
-                        color: t.ink,
-                        marginTop: 8,
-                      }}
-                    >
-                      {p.name}
-                    </Text>
-                    <Pressable onPress={() => openQuickView(p.id)} style={{ marginTop: 6 }}>
-                      <Text
-                        style={{
-                          fontFamily: t.fonts.sansSemiBold,
-                          fontSize: 12,
-                          color: t.terra,
-                        }}
-                      >
-                        Add quick →
-                      </Text>
-                    </Pressable>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-          ) : null}
-
-          {/* New arrivals */}
-          <View style={styles.section}>
-            <SectionHead
-              eyebrow="Just in"
-              title="New arrivals"
-              action="See all"
-              onAction={() => router.push('/products')}
-            />
-            {isWide ? (
-              <View style={styles.grid}>
-                {newest.map((p) => (
-                  <View key={p.id} style={[styles.gridItem, { width: gridItemWidth, flexGrow: 0 }]}>
-                    <ProductCard
-                      product={p}
-                      forceLayout="editorial"
-                      onPress={() => openQuickView(p.id)}
-                      onLongPress={() => router.push(`/product/${p.id}`)}
-                    />
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View style={{ gap: 10 }}>
-                {newest.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    onPress={() => openQuickView(p.id)}
-                    onLongPress={() => router.push(`/product/${p.id}`)}
-                  />
-                ))}
-              </View>
-            )}
+            ))}
+          </ScrollView>
           </View>
+        </View>
+      ) : null}
 
-          {/* Notice block */}
-          <View style={styles.section}>
-            <View style={[styles.callout, { backgroundColor: t.ink }]}>
-              <Text style={[styles.calloutEyebrow, { color: t.ink3, fontFamily: t.fonts.mono }]}>
-                HEALTH NOTE
-              </Text>
-              <Text style={[styles.calloutTitle, { color: t.bg, fontFamily: t.fonts.display }]}>
-                Always read the label and follow your prescription.
-              </Text>
-            </View>
-          </View>
-    </ScrollView>
+      {/* Vitamins & Supplements */}
+      <View style={styles.section}>
+        <SectionHead
+          title="Vitamins & Supplements"
+          action="View all"
+          onAction={() => router.push('/products')}
+          rightSlot={<ViewToggle value={vitaminView} onChange={setVitaminView} />}
+        />
+        {renderRail(vitaminProducts, vitaminView)}
+      </View>
+
+      {/* Web-only footer (replaces the prior "Always read the label..." callout) */}
+      <Footer />
+      </ScrollView>
+    </View>
   );
 }

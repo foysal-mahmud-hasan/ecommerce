@@ -21,9 +21,17 @@ function normalizeProduct(p) {
   const wasMaybe = Number(p.price ?? 0);
   // Only show strikethrough if sales_price is meaningfully lower than price.
   const was = wasMaybe > price ? wasMaybe : null;
-  const featureImage = p.feature_image
-    ? (p.feature_image.startsWith('http') ? p.feature_image : `${IMAGE_BASE_URL}${p.feature_image}`)
-    : null;
+  const rawImage = typeof p.feature_image === 'string' ? p.feature_image.trim() : '';
+  let featureImage = null;
+  if (rawImage) {
+    if (rawImage.startsWith('http://') || rawImage.startsWith('https://')) {
+      featureImage = rawImage;
+    } else {
+      const base = IMAGE_BASE_URL.replace(/\/+$/, '');
+      const path = rawImage.replace(/^\/+/, '');
+      featureImage = `${base}/${path}`;
+    }
+  }
   return {
     id: String(p.id),
     productId: p.product_id ?? p.id,

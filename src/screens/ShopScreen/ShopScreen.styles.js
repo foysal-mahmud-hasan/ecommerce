@@ -5,6 +5,11 @@ export const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: {},
 
+  stickyHeader: {
+    borderBottomWidth: 1,
+    paddingBottom: 8,
+    zIndex: 20,
+  },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -23,7 +28,31 @@ export const styles = StyleSheet.create({
     fontSize: fontSize['3xl'],
     marginTop: 2,
   },
-  topActions: { flexDirection: 'row', gap: 8 },
+  topActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  ordersBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+  },
+  ordersText: {
+    fontSize: 13,
+    letterSpacing: 0.2,
+  },
+  tileGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    rowGap: 10,
+  },
+  tileCell: {
+    flexBasis: 0,
+    flexGrow: 1,
+    minWidth: 0,
+  },
   topIconBtn: {
     width: 38,
     height: 38,

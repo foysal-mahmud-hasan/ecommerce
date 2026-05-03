@@ -1,13 +1,15 @@
-import React from 'react';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useStore } from '../../store/StoreContext';
-import { useTheme, layout } from '../../theme';
+import { layout, useTheme } from '../../theme';
 import { formatPrice, percentOff } from '../../utils/format';
 import { isInStock } from '../../utils/sortStock';
 import AddToCartButton from '../AddToCartButton';
 import Badge from '../Badge';
 import { IconHeart } from '../Icons';
 import Price from '../Price';
+import QtyStepper from '../QtyStepper';
 import RemoteImage from '../RemoteImage';
 import Rating from '../Rating';
 import { styles } from './ProductCard.styles';
@@ -19,39 +21,51 @@ export default function ProductCard({
   showWishlist = true,
   showAddButton = true,
   forceLayout, // 'clinical' | 'editorial' — overrides theme cardVariant
-  compact = false, // shorter image + tighter spacing for dense grids (catalog)
+  compact = false,
 }) {
   const t = useTheme();
-  const { wishlist, toggleWishlist, currency } = useStore();
+  const router = useRouter();
+  const { wishlist, toggleWishlist, currency, openQuickView } = useStore();
   const saved = wishlist.includes(product.id);
   const discount = percentOff(product.price, product.was);
-  const themeVariant = t.cardVariant || 'editorial'; // 'editorial' | 'clinical' | 'warm'
+  const themeVariant = t.cardVariant || 'editorial';
   const variant = forceLayout || themeVariant;
   const themeAspect = t.productCardImageRatio || 1;
-  // Compact = 4:5 portrait (image height ≈ 80% of width). Default = theme.
   const aspect = compact ? 1.25 : themeAspect;
   const inStock = isInStock(product);
+  const [qty, setQty] = useState(1);
 
-  // Pharma/clinical: small thumb on the left, info dense on the right.
+  // Default press handler: open the PDP. Callers can override with `onPress`,
+  // but the design rule is "tap card → PDP, tap Add → modal".
+  const handleCardPress = onPress || (() => router.push(`/product/${product.id}`));
+
+  // Pharma/clinical: thumb left, info right with stepper + CTAs at bottom.
   if (variant === 'clinical') {
+    const handleAdd = (e) => {
+      e?.stopPropagation?.();
+      if (!inStock || !product?.id) return;
+      // Always open the modal — qty stepper on the card is for visual context
+      // only; actual cart addition happens after the user confirms in the modal.
+      openQuickView(product.id);
+    };
     return (
       <Pressable
-        onPress={onPress}
+        onPress={handleCardPress}
         onLongPress={onLongPress}
         style={({ pressed }) => [
           {
-            opacity: pressed ? 0.92 : 1,
+            opacity: pressed ? 0.96 : 1,
             backgroundColor: t.surface,
             borderColor: t.line,
             borderWidth: 1,
             borderRadius: 12,
-            padding: 10,
+            padding: 12,
             flexDirection: 'row',
-            gap: 10,
+            gap: 12,
           },
         ]}
       >
-        <View style={{ width: 76, height: 76 }}>
+        <View style={{ width: 84, height: 84 }}>
           <RemoteImage product={product} fit radius={8} />
           {discount > 0 ? (
             <View style={[styles.badgeBox, { top: 4, left: 4 }]}>
@@ -59,45 +73,96 @@ export default function ProductCard({
             </View>
           ) : null}
         </View>
-        <View style={{ flex: 1, justifyContent: 'space-between', minHeight: 76 }}>
-          {product.brand ? (
-            <Text style={[styles.brand, { color: t.ink3 }]} numberOfLines={1}>
-              {product.brand}
+        <View style={{ flex: 1, justifyContent: 'space-between', minHeight: 84 }}>
+          <View>
+            <Text style={[styles.name, { color: t.ink }]} numberOfLines={2}>
+              {product.name}
             </Text>
-          ) : null}
-          <Text style={[styles.name, { color: t.ink }]} numberOfLines={2}>
-            {product.name}
-          </Text>
-          <View style={styles.row}>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-              <Text style={{ fontFamily: t.fonts.sansSemiBold, fontSize: 14, color: t.ink }}>
-                {formatPrice(product.price, currency)}
-              </Text>
-              {t.showStockChip && product.stock !== undefined ? (
-                <Text
-                  style={{
-                    fontFamily: t.fonts.mono,
-                    fontSize: 10,
-                    color: inStock ? t.success : t.sale,
-                  }}
-                >
-                  {inStock ? 'In stock' : 'Out'}
-                </Text>
-              ) : null}
-            </View>
-            {showAddButton ? <AddToCartButton product={product} size="compact" /> : null}
+            <Text
+              style={{
+                fontFamily: t.fonts.sans,
+                fontSize: 11,
+                color: t.ink3,
+              }}
+              numberOfLines={1}
+            >
+              {product.brand || product.unit || 'Medical grade product'}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+            <Text style={{ fontFamily: t.fonts.sansSemiBold, fontSize: 15, color: t.ink }}>
+              {formatPrice(product.price, currency)}
+            </Text>
+            {showWishlist ? (
+              <Pressable
+                onPress={() => toggleWishlist(product.id)}
+                hitSlop={layout.hitSlop}
+                style={{ padding: 4 }}
+                accessibilityLabel={saved ? 'Remove from wishlist' : 'Save to wishlist'}
+              >
+                <IconHeart size={16} color={saved ? t.terra : t.ink3} filled={saved} />
+              </Pressable>
+            ) : null}
           </View>
         </View>
-        {showWishlist ? (
+        <View style={{ minWidth: 130, justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <QtyStepper
+            value={qty}
+            onChange={setQty}
+            min={1}
+            unitLabel={product.unit ? product.unit : 'strip'}
+            size="compact"
+          />
+          {showAddButton ? (
+            <Pressable
+              onPress={handleAdd}
+              disabled={!inStock}
+              accessibilityRole="button"
+              accessibilityLabel={inStock ? 'Add to cart' : 'Out of stock'}
+              style={({ pressed }) => ({
+                marginTop: 6,
+                height: 30,
+                paddingHorizontal: 14,
+                borderRadius: 8,
+                backgroundColor: inStock ? t.terra : t.surfaceAlt,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.85 : 1,
+                alignSelf: 'stretch',
+              })}
+            >
+              <Text
+                style={{
+                  fontFamily: t.fonts.sansSemiBold,
+                  fontSize: 12,
+                  color: inStock ? '#FFFFFF' : t.ink3,
+                  letterSpacing: 0.2,
+                }}
+              >
+                {inStock ? 'Add to Cart' : 'Out of stock'}
+              </Text>
+            </Pressable>
+          ) : null}
           <Pressable
-            onPress={() => toggleWishlist(product.id)}
-            hitSlop={layout.hitSlop}
-            style={{ padding: 4 }}
-            accessibilityLabel={saved ? 'Remove from wishlist' : 'Save to wishlist'}
+            onPress={(e) => {
+              e?.stopPropagation?.();
+              router.push(`/product/${product.id}`);
+            }}
+            hitSlop={6}
+            style={{ marginTop: 4, alignSelf: 'flex-end' }}
           >
-            <IconHeart size={16} color={saved ? t.terra : t.ink3} filled={saved} />
+            <Text
+              style={{
+                fontFamily: t.fonts.sansMedium,
+                fontSize: 11,
+                color: t.ink3,
+                textDecorationLine: 'underline',
+              }}
+            >
+              View Details
+            </Text>
           </Pressable>
-        ) : null}
+        </View>
       </Pressable>
     );
   }
@@ -105,7 +170,7 @@ export default function ProductCard({
   // Editorial / warm — image on top, info below, Add button at bottom.
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handleCardPress}
       onLongPress={onLongPress}
       style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}
     >

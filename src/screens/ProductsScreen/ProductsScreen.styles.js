@@ -71,7 +71,7 @@ export const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   gridRow: {
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     marginBottom: 22,
     gap: 14,
   },

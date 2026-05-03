@@ -27,8 +27,10 @@ export const DEFAULT_CREDENTIALS = {
 
 export const API_BASE_URL = 'https://backend.epharmabd.com';
 export const API_ECOMMERCE_PATH = '/api/pos/ecommerce';
-// Image base — feature_image fields are returned as relative paths.
-export const IMAGE_BASE_URL = 'https://backend.epharmabd.com/';
+// Image base — feature_image fields are returned as paths relative to the
+// Laravel storage disk (e.g. "uploads/inventory/product/feature_image/x.png").
+// Backend exposes that disk under `/storage/` (verified — other prefixes 404).
+export const IMAGE_BASE_URL = 'https://backend.epharmabd.com/storage/';
 
 export const TENANT_LABELS = {
   [TENANT_PHARMA]: 'Pharmacy',

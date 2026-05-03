@@ -177,6 +177,63 @@ export function IconCart({ size = 18, color = '#000' }) {
   );
 }
 
+export function IconList({ size = 18, color = '#000' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M8 6h12M8 12h12M8 18h12" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
+      <Circle cx={4} cy={6} r={1.4} fill={color} />
+      <Circle cx={4} cy={12} r={1.4} fill={color} />
+      <Circle cx={4} cy={18} r={1.4} fill={color} />
+    </Svg>
+  );
+}
+
+export function IconLeaf({ size = 18, color = '#06A05A' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M20 4c0 8-5 14-12 14a8 8 0 01-2-.3C6.5 11 12 5 20 4z"
+        fill={color}
+      />
+      <Path d="M6 18c2-5 6-9 12-12" stroke="#FFFFFF" strokeWidth={1.2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function IconPill({ size = 18, color = '#000' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M7.5 4.5l12 12a4.95 4.95 0 11-7 7l-12-12a4.95 4.95 0 117-7z"
+        stroke={color}
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path d="M11 8l5 5" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function IconBottle({ size = 18, color = '#000' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M9 3h6v3l1 3v9a3 3 0 01-3 3h-2a3 3 0 01-3-3V9l1-3V3z" stroke={color} strokeWidth={stroke} strokeLinejoin="round" />
+      <Path d="M9 12h6" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function IconStethoscope({ size = 18, color = '#000' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M5 3v6a4 4 0 008 0V3" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
+      <Path d="M9 13v3a4 4 0 008 0v-2" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
+      <Circle cx={17} cy={11} r={2} stroke={color} strokeWidth={stroke} />
+    </Svg>
+  );
+}
+
 export function IconStar({ size = 12, color = '#000', filled = true }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 12 12" fill={filled ? color : 'none'}>

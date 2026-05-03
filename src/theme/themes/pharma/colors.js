@@ -1,5 +1,5 @@
-// Pharma palette: clinical, neutral, photo-optional. Sky-blue primary signals
-// trust without leaning medical-cliché green.
+// Pharma palette: medical-clean green primary signaling trust + freshness.
+// Pastel category tokens drive the 2x2 entry tiles on the home screen.
 export const pharmaColors = {
   bg: '#F8FAFC',
   surface: '#FFFFFF',
@@ -15,11 +15,29 @@ export const pharmaColors = {
 
   // `terra` keeps the same key existing components consume; value is the
   // pharma primary so all CTAs/badges/icons recolor automatically.
-  terra: '#0EA5E9',
-  terraHover: '#0284C7',
-  sage: '#0F766E',
-  sand: '#7DD3FC',
+  terra: '#06A05A',
+  terraHover: '#048047',
+  sage: '#0F4C4C',
+  sand: '#D1FAE5',
   cream: '#F8FAFC',
+
+  // Category tile pastels — used by the 2x2 entry grid on the home screen.
+  categoryMint: '#D1FAE5',
+  categorySage: '#DCFCE7',
+  categoryPeach: '#FED7AA',
+  categoryLilac: '#E9D5FF',
+  categoryAccentMint: '#06A05A',
+  categoryAccentSage: '#15803D',
+  categoryAccentPeach: '#EA580C',
+  categoryAccentLilac: '#7E22CE',
+
+  // Footer (web-only) tokens.
+  footerBg: '#0B3D3D',
+  footerInk: '#94A3B8',
+  footerInkStrong: '#E2E8F0',
+
+  chipActiveBg: '#06A05A',
+  accentOrange: '#F97316',
 
   success: '#16A34A',
   sale: '#DC2626',

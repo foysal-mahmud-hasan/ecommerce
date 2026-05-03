@@ -1,1 +1,1 @@
-export { default } from './AddToCartButton';
+export { default, BasketIconButton } from './AddToCartButton';

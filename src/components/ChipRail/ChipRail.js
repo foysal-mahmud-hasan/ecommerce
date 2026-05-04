@@ -1,23 +1,29 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, View } from 'react-native';
 import { useTheme } from '../../theme';
+import { useBreakpoint } from '../../utils/responsive';
 import { IconChevL, IconChevR } from '../Icons';
 
 const SCROLL_STEP = 240;
 
-// Horizontal-scroll wrapper for chip rails. On native it's a plain ScrollView
-// (touch-drag works). On web, touch-drag also works but mouse users have no
-// scrollbar — so we overlay left/right scroll buttons that fade in when there
-// is room to scroll in that direction.
+// Horizontal-scroll wrapper for chip rails. On native AND on mobile-width web
+// it's plain touch-drag. Only desktop/tablet web gets the overlay scroll
+// buttons (mouse users have no scrollbar there).
 export default function ChipRail({ children, paddingHorizontal = 20, gap = 8 }) {
   const t = useTheme();
+  const bp = useBreakpoint();
   const scrollRef = useRef(null);
   const [layout, setLayout] = useState({ scrollX: 0, contentW: 0, viewportW: 0 });
 
   const isWeb = Platform.OS === 'web';
+  const showButtons = isWeb && bp !== 'mobile';
 
+  // Read nativeEvent fields synchronously — React pools synthetic events and
+  // nullifies them before the setState updater runs, which crashes on mobile
+  // ("Cannot read property 'contentOffset' of null").
   const onScroll = useCallback((e) => {
-    setLayout((prev) => ({ ...prev, scrollX: e.nativeEvent.contentOffset.x }));
+    const x = e?.nativeEvent?.contentOffset?.x ?? 0;
+    setLayout((prev) => ({ ...prev, scrollX: x }));
   }, []);
 
   const onContentSizeChange = useCallback((w) => {
@@ -25,7 +31,7 @@ export default function ChipRail({ children, paddingHorizontal = 20, gap = 8 }) 
   }, []);
 
   const onViewportLayout = useCallback((e) => {
-    const w = e.nativeEvent.layout.width;
+    const w = e?.nativeEvent?.layout?.width ?? 0;
     setLayout((prev) => ({ ...prev, viewportW: w }));
   }, []);
 
@@ -54,8 +60,8 @@ export default function ChipRail({ children, paddingHorizontal = 20, gap = 8 }) 
     }
   }, [layout.scrollX]);
 
-  const canScrollLeft = isWeb && layout.scrollX > 4;
-  const canScrollRight = isWeb && layout.contentW - layout.viewportW - layout.scrollX > 4;
+  const canScrollLeft = showButtons && layout.scrollX > 4;
+  const canScrollRight = showButtons && layout.contentW - layout.viewportW - layout.scrollX > 4;
 
   return (
     <View

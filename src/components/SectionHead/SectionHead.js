@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTheme, layout } from '../../theme';
+import { useBreakpoint } from '../../utils/responsive';
 import { IconChevR } from '../Icons';
 import { styles } from './SectionHead.styles';
 
@@ -13,14 +14,20 @@ export default function SectionHead({
   rightSlot,
 }) {
   const t = useTheme();
+  const bp = useBreakpoint();
+  const isMobile = bp === 'mobile';
+  const titleStyle = serif
+    ? [styles.titleSerif, isMobile && styles.titleSerifMobile]
+    : [styles.titleSans, isMobile && styles.titleSansMobile];
   return (
     <View style={styles.row}>
       <View style={styles.titleCol}>
         {eyebrow ? (
-          <Text style={[styles.eyebrow, { color: t.ink3 }]}>{eyebrow}</Text>
+          <Text style={[styles.eyebrow, { color: t.ink3 }]} numberOfLines={1}>{eyebrow}</Text>
         ) : null}
         <Text
-          style={[serif ? styles.titleSerif : styles.titleSans, { color: t.ink }]}
+          style={[...titleStyle, { color: t.ink }]}
+          numberOfLines={isMobile ? 1 : 2}
         >
           {title}
         </Text>

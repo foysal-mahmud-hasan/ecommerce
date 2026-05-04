@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ecommerce-updated",
-    "slug": "ecommerce-updated",
+    "name": "pos-ecommerce",
+    "slug": "pos-ecommerce",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Platform, ScrollView, Text, View } from 'react-native';
+import { Platform, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Footer from '../../components/Footer';
 import { IconHeart } from '../../components/Icons';
@@ -7,7 +7,7 @@ import MobileHeader from '../../components/MobileHeader';
 import ProductCard from '../../components/ProductCard';
 import ViewToggle from '../../components/ViewToggle';
 import { useStore } from '../../store/StoreContext';
-import { layout, useTheme } from '../../theme';
+import { layout, screenPadding, useTheme } from '../../theme';
 import { useBreakpoint } from '../../utils/responsive';
 import { styles } from './WishlistScreen.styles';
 
@@ -18,12 +18,14 @@ export default function WishlistScreen() {
   const { wishlist, productsCache } = useStore();
   const items = wishlist.map((id) => productsCache?.byId?.[id]).filter(Boolean);
   const [view, setView] = useState(bp === 'mobile' ? 'list' : 'grid');
+  const { width: winW } = useWindowDimensions();
 
   const cols = bp === 'desktop' ? 4 : bp === 'tablet' ? 3 : 2;
   const gap = 14;
+  const nativeContainerW = Math.max(0, winW - screenPadding * 2);
   const cellWidth = Platform.OS === 'web'
     ? `calc(${100 / cols}% - ${(gap * (cols - 1)) / cols}px)`
-    : `${(100 - cols + 1) / cols}%`;
+    : (nativeContainerW - gap * (cols - 1)) / cols;
 
   return (
     <View style={[styles.container, { backgroundColor: t.bg }]}>

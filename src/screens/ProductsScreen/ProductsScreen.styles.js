@@ -57,6 +57,12 @@ export const styles = StyleSheet.create({
     flexGrow: 0,
     flexShrink: 0,
   },
+  categoryRail: {
+    marginBottom: 10,
+  },
+  sortRail: {
+    marginBottom: 6,
+  },
   countRow: {
     paddingHorizontal: screenPadding,
     paddingTop: 4,

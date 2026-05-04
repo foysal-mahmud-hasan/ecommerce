@@ -8,7 +8,7 @@ import { formatPrice, percentOff } from '../../utils/format';
 import { sortInStockFirst } from '../../utils/sortStock';
 import QtyStepper from '../QtyStepper';
 import RemoteImage from '../RemoteImage';
-import { IconX } from '../Icons';
+import { IconGrid, IconX } from '../Icons';
 
 // Centered modal quick-view. Mounted at root layout. Driven by store.quickViewProductId.
 //
@@ -104,7 +104,7 @@ export default function QuickViewSheet() {
 
   const discount = percentOff(product.price, product.was);
   const cardMaxWidth = isMobile ? windowWidth : Math.min(windowWidth - 48, 820);
-  const cardMinHeight = isMobile ? '100%' : 0;
+  const cardMaxHeight = isMobile ? '88%' : '90%';
   const isStackedCard = isMobile;
 
   return (
@@ -130,16 +130,38 @@ export default function QuickViewSheet() {
           style={{
             width: '100%',
             maxWidth: cardMaxWidth,
-            maxHeight: isMobile ? '100%' : '90%',
-            minHeight: cardMinHeight,
+            maxHeight: cardMaxHeight,
             backgroundColor: t.surface,
-            borderRadius: isMobile ? 0 : 20,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            borderBottomLeftRadius: isMobile ? 0 : 20,
+            borderBottomRightRadius: isMobile ? 0 : 20,
             overflow: 'hidden',
+            flexDirection: 'column',
             ...(Platform.OS === 'web'
-              ? { boxShadow: '0 30px 80px rgba(0,0,0,0.25)' }
+              ? { boxShadow: '0 -8px 32px rgba(0,0,0,0.18)' }
               : { elevation: 24 }),
           }}
         >
+          {isMobile ? (
+            <View
+              pointerEvents="none"
+              style={{
+                alignItems: 'center',
+                paddingTop: 8,
+                paddingBottom: 4,
+              }}
+            >
+              <View
+                style={{
+                  width: 40,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: t.line,
+                }}
+              />
+            </View>
+          ) : null}
           {/* Close button — overlays card top-right */}
           <Pressable
             onPress={closeQuickView}
@@ -162,7 +184,8 @@ export default function QuickViewSheet() {
           </Pressable>
 
           <ScrollView
-            contentContainerStyle={{ padding: isMobile ? 16 : 24 }}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: isMobile ? 16 : 24, paddingBottom: 24 }}
             showsVerticalScrollIndicator={false}
           >
             {/* Top row: image + info */}
@@ -176,42 +199,45 @@ export default function QuickViewSheet() {
               <View
                 style={{
                   width: isStackedCard ? '100%' : '40%',
-                  position: 'relative',
+                  alignItems: isStackedCard ? 'center' : 'stretch',
                 }}
               >
                 <View
                   style={{
-                    aspectRatio: 1,
+                    width: isStackedCard ? 180 : '100%',
+                    height: isStackedCard ? 180 : undefined,
+                    aspectRatio: isStackedCard ? undefined : 1,
                     borderRadius: 14,
                     overflow: 'hidden',
                     backgroundColor: t.surfaceDeep,
+                    position: 'relative',
                   }}
                 >
                   <RemoteImage product={product} fit radius={14} contentFit="cover" />
-                </View>
-                {discount > 0 ? (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      top: 10,
-                      left: 10,
-                      backgroundColor: t.ink,
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 999,
-                    }}
-                  >
-                    <Text
+                  {discount > 0 ? (
+                    <View
                       style={{
-                        fontFamily: t.fonts.sansSemiBold,
-                        fontSize: 11,
-                        color: '#FFFFFF',
+                        position: 'absolute',
+                        top: 10,
+                        left: 10,
+                        backgroundColor: t.ink,
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: 999,
                       }}
                     >
-                      {discount}%
-                    </Text>
-                  </View>
-                ) : null}
+                      <Text
+                        style={{
+                          fontFamily: t.fonts.sansSemiBold,
+                          fontSize: 11,
+                          color: '#FFFFFF',
+                        }}
+                      >
+                        {discount}%
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
               </View>
 
               <View style={{ flex: 1, paddingRight: isStackedCard ? 0 : 12 }}>
@@ -358,74 +384,6 @@ export default function QuickViewSheet() {
                   </View>
                 ) : null}
 
-                {/* Action row */}
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <Pressable
-                    onPress={handleAdd}
-                    disabled={totalQty === 0}
-                    accessibilityRole="button"
-                    accessibilityLabel="Add to cart"
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      paddingVertical: 14,
-                      borderRadius: 999,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: totalQty === 0 ? t.surfaceAlt : t.terra,
-                      opacity: pressed ? 0.9 : 1,
-                    })}
-                  >
-                    <Text
-                      style={{
-                        fontFamily: t.fonts.sansSemiBold,
-                        fontSize: 14,
-                        color: totalQty === 0 ? t.ink3 : '#FFFFFF',
-                      }}
-                    >
-                      Add to Cart
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={handleMore}
-                    accessibilityRole="button"
-                    accessibilityLabel="More details"
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      paddingVertical: 14,
-                      borderRadius: 999,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: t.accentOrange || '#F97316',
-                      opacity: pressed ? 0.9 : 1,
-                    })}
-                  >
-                    <Text
-                      style={{
-                        fontFamily: t.fonts.sansSemiBold,
-                        fontSize: 14,
-                        color: '#FFFFFF',
-                      }}
-                    >
-                      More
-                    </Text>
-                  </Pressable>
-                </View>
-
-                <Pressable
-                  onPress={() => setRelatedOpen((v) => !v)}
-                  hitSlop={8}
-                  style={{ marginTop: 14, alignSelf: 'flex-start' }}
-                >
-                  <Text
-                    style={{
-                      fontFamily: t.fonts.sansSemiBold,
-                      fontSize: 13,
-                      color: t.terra,
-                    }}
-                  >
-                    {relatedOpen ? 'Hide related items..' : 'Related items..'}
-                  </Text>
-                </Pressable>
               </View>
             </View>
 
@@ -443,6 +401,89 @@ export default function QuickViewSheet() {
               />
             ) : null}
           </ScrollView>
+
+          {/* Sticky action bar — pinned at the bottom of the sheet so Add to
+              Cart / More / Related stay reachable while the body scrolls. */}
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: 10,
+              padding: isMobile ? 12 : 16,
+              paddingBottom: isMobile ? 16 : 16,
+              borderTopWidth: 1,
+              borderTopColor: t.line,
+              backgroundColor: t.surface,
+            }}
+          >
+            <Pressable
+              onPress={handleAdd}
+              disabled={totalQty === 0}
+              accessibilityRole="button"
+              accessibilityLabel="Add to cart"
+              style={({ pressed }) => ({
+                flex: 1,
+                paddingVertical: 12,
+                borderRadius: 999,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: totalQty === 0 ? t.surfaceAlt : t.terra,
+                opacity: pressed ? 0.9 : 1,
+              })}
+            >
+              <Text
+                style={{
+                  fontFamily: t.fonts.sansSemiBold,
+                  fontSize: 14,
+                  color: totalQty === 0 ? t.ink3 : '#FFFFFF',
+                }}
+              >
+                Add to Cart
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={handleMore}
+              accessibilityRole="button"
+              accessibilityLabel="More details"
+              style={({ pressed }) => ({
+                flex: 1,
+                paddingVertical: 12,
+                borderRadius: 999,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: t.accentOrange || '#F97316',
+                opacity: pressed ? 0.9 : 1,
+              })}
+            >
+              <Text
+                style={{
+                  fontFamily: t.fonts.sansSemiBold,
+                  fontSize: 14,
+                  color: '#FFFFFF',
+                }}
+              >
+                More
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setRelatedOpen((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel={relatedOpen ? 'Hide related items' : 'Show related items'}
+              style={({ pressed }) => ({
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: relatedOpen ? t.terra : t.surfaceAlt,
+                borderWidth: 1,
+                borderColor: relatedOpen ? t.terra : t.line,
+                opacity: pressed ? 0.85 : 1,
+                alignSelf: 'center',
+              })}
+            >
+              <IconGrid size={18} color={relatedOpen ? '#FFFFFF' : t.ink} />
+            </Pressable>
+          </View>
         </Pressable>
       </Pressable>
     </Modal>
@@ -453,7 +494,6 @@ function RelatedGrid({ items, t, currency, isMobile, onAdd, onOpen }) {
   const cols = isMobile ? 2 : 4;
   const gap = 10;
   const cellPercent = `${(100 - (cols - 1) * 2) / cols - 0.5}%`;
-  const maxH = isMobile ? 280 : 340;
 
   if (!items.length) {
     return (
@@ -474,16 +514,13 @@ function RelatedGrid({ items, t, currency, isMobile, onAdd, onOpen }) {
         paddingTop: 14,
       }}
     >
-      <ScrollView
-        style={{ maxHeight: maxH }}
-        contentContainerStyle={{
+      <View
+        style={{
           flexDirection: 'row',
           flexWrap: 'wrap',
           gap,
           rowGap: gap,
         }}
-        nestedScrollEnabled
-        showsVerticalScrollIndicator
       >
         {items.map((p) => (
           <View
@@ -572,7 +609,7 @@ function RelatedGrid({ items, t, currency, isMobile, onAdd, onOpen }) {
             </View>
           </View>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 }

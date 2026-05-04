@@ -22,10 +22,17 @@ export const styles = StyleSheet.create({
     letterSpacing: -0.3,
     lineHeight: 30,
   },
+  titleSerifMobile: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
   titleSans: {
     fontFamily: fonts.sansSemiBold,
     fontSize: fontSize['2xl'],
     letterSpacing: -0.1,
+  },
+  titleSansMobile: {
+    fontSize: fontSize.xl,
   },
   action: {
     flexDirection: 'row',

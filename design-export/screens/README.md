@@ -64,7 +64,7 @@ hook the designer's desktop redesigns can plug into.
 If the data or styles change and you need new screenshots:
 
 ```bash
-cd /home/foysal/Desktop/Office/ecommerce-updated
+cd /home/foysal/Desktop/Office/pos-ecommerce
 # in another terminal:
 npx expo start --port 19120 --offline
 # wait ~25s for "Waiting on http://localhost:19120"

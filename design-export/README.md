@@ -1,7 +1,7 @@
 # Design Handoff — Multi-Tenant Storefront
 
 This folder is the design source of truth for the Expo React Native app at
-`/home/foysal/Desktop/Office/ecommerce-updated`. Hand it to the designer; they have
+`/home/foysal/Desktop/Office/pos-ecommerce`. Hand it to the designer; they have
 everything they need to build out the Figma file.
 
 ## What's in here
@@ -37,9 +37,9 @@ Top-right of the plugin panel: **"Push to Figma styles & variables"**. Tick "Var
 - `COMPONENTS.md` describes each component's anatomy. Use this to build the **component library** before laying out screens.
 
 ### 5. Use the running app as visual reference
-The implementation is alive at `/home/foysal/Desktop/Office/ecommerce-updated`. Run:
+The implementation is alive at `/home/foysal/Desktop/Office/pos-ecommerce`. Run:
 ```bash
-cd /home/foysal/Desktop/Office/ecommerce-updated
+cd /home/foysal/Desktop/Office/pos-ecommerce
 npx expo start --web
 ```
 Press `w` to open in browser. Live, both themes accessible via the **dev tenant toggle** in the Account tab.

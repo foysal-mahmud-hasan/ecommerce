@@ -1,13 +1,14 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Chip from '../../components/Chip';
 import { IconSliders } from '../../components/Icons';
 import MobileHeader from '../../components/MobileHeader';
 import ProductCard from '../../components/ProductCard';
 import { useStore } from '../../store/StoreContext';
-import { layout, useTheme } from '../../theme';
+import { layout, screenPadding, useTheme } from '../../theme';
+import { useBreakpoint } from '../../utils/responsive';
 import { sortInStockFirst } from '../../utils/sortStock';
 import { styles } from './CategoryScreen.styles';
 
@@ -26,6 +27,14 @@ export default function CategoryScreen() {
   const cat = typeof id === 'string' ? id : '';
   const [sort, setSort] = useState('featured');
   const { categories, productsCache, openQuickView } = useStore();
+  const bp = useBreakpoint();
+  const { width: winW } = useWindowDimensions();
+  const cols = bp === 'desktop' ? 4 : bp === 'tablet' ? 3 : 2;
+  const gridGap = 14;
+  const nativeContainerW = Math.max(0, winW - screenPadding * 2);
+  const cellWidth = Platform.OS === 'web'
+    ? `calc(${100 / cols}% - ${(gridGap * (cols - 1)) / cols}px)`
+    : (nativeContainerW - gridGap * (cols - 1)) / cols;
 
   const catName = (categories || []).find((c) => String(c.id) === cat)?.name || 'All';
 
@@ -70,9 +79,12 @@ export default function CategoryScreen() {
         <Text style={[styles.count, { color: t.ink3 }]}>
           {products.length} item{products.length !== 1 ? 's' : ''} · {catName.toLowerCase()}
         </Text>
-        <View style={styles.grid}>
+        <View style={[styles.grid, { gap: gridGap }]}>
           {products.map((p) => (
-            <View key={p.id} style={styles.gridItem}>
+            <View
+              key={p.id}
+              style={{ width: cellWidth, flexGrow: 0, flexShrink: 0 }}
+            >
               <ProductCard
                 product={p}
                 onPress={() => openQuickView(p.id)}

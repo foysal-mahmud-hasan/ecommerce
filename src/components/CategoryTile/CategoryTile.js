@@ -39,11 +39,11 @@ export default function CategoryTile({ label, icon, bg, accent, onPress }) {
         <Text
           style={{
             fontFamily: t.fonts.sansSemiBold,
-            fontSize: 14,
+            fontSize: 15,
             color: t.ink,
             flex: 1,
           }}
-          numberOfLines={2}
+          numberOfLines={1}
         >
           {label}
         </Text>

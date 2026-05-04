@@ -154,28 +154,32 @@ export default function ProductsScreen() {
         </Pressable>
       </View>
 
-      <ChipRail paddingHorizontal={16}>
-        <Chip active={activeCategoryId === 'all'} onPress={() => setActiveCategoryId('all')}>
-          All
-        </Chip>
-        {(categories || []).map((c) => (
-          <Chip
-            key={c.id}
-            active={activeCategoryId === c.id}
-            onPress={() => setActiveCategoryId(c.id)}
-          >
-            {c.name}
+      <View style={styles.categoryRail}>
+        <ChipRail paddingHorizontal={16}>
+          <Chip active={activeCategoryId === 'all'} onPress={() => setActiveCategoryId('all')}>
+            All
           </Chip>
-        ))}
-      </ChipRail>
+          {(categories || []).map((c) => (
+            <Chip
+              key={c.id}
+              active={activeCategoryId === c.id}
+              onPress={() => setActiveCategoryId(c.id)}
+            >
+              {c.name}
+            </Chip>
+          ))}
+        </ChipRail>
+      </View>
 
-      <ChipRail paddingHorizontal={16}>
-        {SORTS.map((s) => (
-          <Chip key={s.id} active={sort === s.id} onPress={() => setSort(s.id)}>
-            {s.label}
-          </Chip>
-        ))}
-      </ChipRail>
+      <View style={styles.sortRail}>
+        <ChipRail paddingHorizontal={16}>
+          {SORTS.map((s) => (
+            <Chip key={s.id} active={sort === s.id} onPress={() => setSort(s.id)}>
+              {s.label}
+            </Chip>
+          ))}
+        </ChipRail>
+      </View>
 
       <View style={[styles.countRow, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
         <Text style={[styles.count, { color: t.ink3 }]}>

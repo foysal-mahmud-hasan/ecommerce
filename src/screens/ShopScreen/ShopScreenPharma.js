@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CategoryTile from '../../components/CategoryTile';
 import Chip from '../../components/Chip';
@@ -21,7 +21,7 @@ import RemoteImage from '../../components/RemoteImage';
 import SectionHead from '../../components/SectionHead';
 import ViewToggle from '../../components/ViewToggle';
 import { fragCartCount, useStore } from '../../store/StoreContext';
-import { layout, useTheme } from '../../theme';
+import { layout, screenPadding, useTheme } from '../../theme';
 import { useBreakpoint } from '../../utils/responsive';
 import { sortInStockFirst } from '../../utils/sortStock';
 import HomeSearchBar from './HomeSearchBar';
@@ -38,10 +38,12 @@ export default function ShopScreenPharma() {
   const bp = useBreakpoint();
   const isWide = bp === 'desktop' || bp === 'tablet';
   const cardCols = bp === 'desktop' ? 4 : bp === 'tablet' ? 3 : 2;
-  // % per cell after subtracting (cardCols - 1) gap slots. Gap is fixed pt;
-  // we let flexBasis carry the share and rely on `flexGrow: 0` so the row
-  // doesn't bleed past 100%.
-  const cardCellBasis = `${100 / cardCols}%`;
+  const { width: winW } = useWindowDimensions();
+  // Native: gap is in px and flexBasis: '50%' + gap overflows the row, so we
+  // measure the available width and hand the cell an exact pixel width that
+  // leaves room for the gap. Web supports calc() so we use that there.
+  const nativeContainerW = Math.max(0, winW - screenPadding * 2);
+  const nativeCellW = (nativeContainerW - 14 * (cardCols - 1)) / cardCols;
   const {
     cart,
     productsCache,
@@ -125,19 +127,16 @@ export default function ShopScreenPharma() {
   const renderRail = (products, view) => {
     if (view === 'grid') {
       const gap = 14;
-      // Each cell takes `100/cols%` minus its share of the row gap, so the
-      // row exactly fills the parent without leaving an empty right strip.
       const cellWidth = `calc(${100 / cardCols}% - ${(gap * (cardCols - 1)) / cardCols}px)`;
       return (
-        <View style={[styles.grid, { gap }]}>
+        <View style={[styles.grid, { gap, rowGap: gap + 8 }]}>
           {products.map((p) => (
             <View
               key={p.id}
               style={[
-                styles.gridItem,
                 Platform.OS === 'web'
                   ? { width: cellWidth, flexGrow: 0, flexShrink: 0, flexBasis: 'auto' }
-                  : { flexBasis: cardCellBasis, flexGrow: 0, flexShrink: 0, paddingRight: gap },
+                  : { width: nativeCellW, flexGrow: 0, flexShrink: 0 },
               ]}
             >
               <ProductCard product={p} forceLayout="editorial" />
@@ -248,8 +247,8 @@ export default function ShopScreenPharma() {
         </View>
       ) : null}
 
-      {/* 2x2 (mobile) / 1x4 (wide) category tile grid — flex children fill the
-          row exactly so there's no right-edge gap on web. */}
+      {/* Category tiles: 1-per-row on mobile (full-width, labels readable),
+          1x4 on wide screens. */}
       <View style={[styles.section, { paddingTop: 16 }]}>
         <View style={styles.tileGrid}>
           {tiles.map((tile) => (
@@ -257,7 +256,7 @@ export default function ShopScreenPharma() {
               key={tile.key}
               style={[
                 styles.tileCell,
-                isWide ? null : { flexBasis: '48%', flexGrow: 0 },
+                isWide ? null : { flexBasis: '100%', flexGrow: 0 },
               ]}
             >
               <CategoryTile

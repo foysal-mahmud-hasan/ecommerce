@@ -18,6 +18,35 @@ const { URL } = require('url');
 
 const PROXY_PREFIX = '/api-proxy/';
 
+// SSLCommerz auto-submits a POST form to our success_url after payment.
+// Expo's CorsMiddleware crashes on `new URL(...)` when the request is a POST
+// from a cross-origin form submit, returning a 500. We intercept the POST
+// here (before that broken middleware runs), discard the body, and 303-
+// redirect the browser to GET the same URL — which the SPA can render
+// normally. All the params we need live in the query string of the URL we
+// passed as success_url, so dropping the POST body is fine.
+function sslcBounceMiddleware(req, res, next) {
+  if (
+    req.method === 'POST' &&
+    typeof req.url === 'string' &&
+    req.url.startsWith('/payment-result')
+  ) {
+    req.resume();
+    req.on('end', () => {
+      res.statusCode = 303;
+      res.setHeader('Location', req.url);
+      res.end();
+    });
+    req.on('error', () => {
+      res.statusCode = 303;
+      res.setHeader('Location', req.url);
+      res.end();
+    });
+    return;
+  }
+  return next();
+}
+
 function proxyMiddleware(req, res, next) {
   if (!req.url || !req.url.startsWith(PROXY_PREFIX)) return next();
 
@@ -87,7 +116,10 @@ config.server = {
   ...(config.server || {}),
   enhanceMiddleware: (middleware, server) => {
     const enhanced = originalEnhance ? originalEnhance(middleware, server) : middleware;
-    return (req, res, next) => proxyMiddleware(req, res, () => enhanced(req, res, next));
+    return (req, res, next) =>
+      sslcBounceMiddleware(req, res, () =>
+        proxyMiddleware(req, res, () => enhanced(req, res, next)),
+      );
   },
 };
 

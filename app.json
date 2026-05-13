@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "pos-ecommerce",
-    "slug": "pos-ecommerce",
+    "slug": "ecommerce",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,17 +10,19 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#06A05A"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fragouras.posecommerce"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#06A05A"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.fragouras.posecommerce"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -30,7 +32,28 @@
     "scheme": "fragouras",
     "plugins": [
       "expo-router",
-      "expo-font"
-    ]
+      "expo-font",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.fragouras.demo",
+          "enableGooglePay": false
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e8d03bde-b40f-445b-b648-2615f1a67384"
+      }
+    },
+    "owner": "tatsusolo",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/00e4c04e-e2dd-4b65-942a-0ddcb5eb5928"
+    }
   }
 }

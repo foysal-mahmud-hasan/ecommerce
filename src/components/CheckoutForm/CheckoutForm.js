@@ -6,9 +6,16 @@ import { styles } from './CheckoutForm.styles';
 
 export const PAYMENT_OPTIONS = [
   { id: 'cod', label: 'Cash on delivery', sub: 'Pay in cash when your order arrives.' },
-  { id: 'bkash', label: 'bKash', sub: "Mobile money — we'll redirect at checkout." },
-  { id: 'nagad', label: 'Nagad', sub: "Mobile money — we'll redirect at checkout." },
+  { id: 'sslcommerz', label: 'SSLCommerz', sub: 'Card, mobile banking, net banking (BDT).' },
+  { id: 'stripe', label: 'Credit / debit card', sub: 'Secure checkout via Stripe.' },
 ];
+
+// Filter the option list against the gateways supported for the order's
+// currency. Currency-agnostic methods (COD) always pass through.
+export function filterPaymentOptions(allowedIds) {
+  const allow = new Set(allowedIds);
+  return PAYMENT_OPTIONS.filter((opt) => allow.has(opt.id));
+}
 
 // Returns { ok, errors }. Used by both CheckoutScreen and CartSheet.
 export function validateAddress(form) {
@@ -50,8 +57,9 @@ function Field({ label, placeholder, value, onChange, error, t, keyboardType }) 
 // `form` shape: { name, phone, line1, city, zip, payment }
 // `onChange(key)(value)` updates a single field.
 // `errors` is a key→message map.
-export default function CheckoutForm({ step, form, onChange, errors = {} }) {
+export default function CheckoutForm({ step, form, onChange, errors = {}, paymentOptions }) {
   const t = useTheme();
+  const options = paymentOptions || PAYMENT_OPTIONS;
 
   if (step === 0) {
     return (
@@ -97,7 +105,7 @@ export default function CheckoutForm({ step, form, onChange, errors = {} }) {
   // Payment step
   return (
     <View>
-      {PAYMENT_OPTIONS.map((opt) => {
+      {options.map((opt) => {
         const active = form.payment === opt.id;
         return (
           <Pressable
@@ -118,7 +126,7 @@ export default function CheckoutForm({ step, form, onChange, errors = {} }) {
       <View style={styles.encRow}>
         <IconShield color={t.ink3} size={14} />
         <Text style={[styles.encText, { color: t.ink3 }]}>
-          Demo checkout — no real charge will occur.
+          Sandbox checkout — no real charge will be made.
         </Text>
       </View>
     </View>

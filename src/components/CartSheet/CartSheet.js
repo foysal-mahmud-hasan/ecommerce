@@ -6,14 +6,18 @@ import {
 } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { placeOrder } from '../../api/orders';
+import { initSslcSession, makeSslcTransactionId } from '../../api/payments/sslcommerz';
+import { gatewaysForCurrency } from '../../config/payments';
 import { fragCartCount, fragCartTotal, useStore } from '../../store/StoreContext';
 import { useTheme } from '../../theme';
 import { formatPrice } from '../../utils/format';
-import CheckoutForm, { validateAddress } from '../CheckoutForm';
+import CheckoutForm, { filterPaymentOptions, validateAddress } from '../CheckoutForm';
 import { IconCheck, IconMinus, IconPlus, IconX } from '../Icons';
+import { openGatewayPage } from '../PaymentWebBrowser/openGatewayPage';
 import RemoteImage from '../RemoteImage';
+import StripeCardSheet from '../StripeCardSheet';
 import { styles } from './CartSheet.styles';
 
 const STEP_LABELS = ['Review', 'Address', 'Payment', 'Done'];
@@ -45,7 +49,13 @@ export default function CartSheet() {
   const total = fragCartTotal(cart, productMap);
   const count = fragCartCount(cart);
 
+  const paymentOptions = useMemo(
+    () => filterPaymentOptions(gatewaysForCurrency(currency?.code)),
+    [currency?.code],
+  );
+
   const [busy, setBusy] = useState(false);
+  const [stripeOpen, setStripeOpen] = useState(false);
   const [errors, setErrors] = useState({});
   const [orderId, setOrderId] = useState(null);
   const [form, setForm] = useState({
@@ -54,8 +64,17 @@ export default function CartSheet() {
     line1: '',
     city: '',
     zip: '',
-    payment: 'cod',
+    payment: paymentOptions[0]?.id || 'cod',
   });
+
+  // Re-sync the form's payment default if the option list changes (currency
+  // loads after first render).
+  useEffect(() => {
+    setForm((f) => {
+      if (paymentOptions.some((o) => o.id === f.payment)) return f;
+      return { ...f, payment: paymentOptions[0]?.id || 'cod' };
+    });
+  }, [paymentOptions]);
 
   const onChange = useCallback(
     (k) => (v) => setForm((f) => ({ ...f, [k]: v })),
@@ -84,6 +103,54 @@ export default function CartSheet() {
     }
   }, [cartSheetOpen, count, cartSheetStep, closeCartSheet]);
 
+  const buildItems = useCallback(
+    () =>
+      cart.map((c) => {
+        const p = productMap[c.id];
+        return {
+          productId: c.id,
+          name: p?.name || 'Item',
+          qty: c.qty,
+          price: p?.price || 0,
+          unit: c.variant?.unit || p?.unit || '',
+          image: p?.image || null,
+        };
+      }),
+    [cart, productMap],
+  );
+
+  const buildAddress = useCallback(
+    () => ({
+      name: form.name,
+      phone: form.phone,
+      line1: form.line1,
+      city: form.city,
+      zip: form.zip,
+    }),
+    [form],
+  );
+
+  const finalizeOrder = useCallback(
+    async ({ gateway, paymentStatus, transactionId, id } = {}) => {
+      const order = await placeOrder({
+        id,
+        items: buildItems(),
+        address: buildAddress(),
+        payment: form.payment,
+        gateway,
+        paymentStatus,
+        transactionId,
+        currency,
+      });
+      recordOrder(order);
+      clearCart();
+      setOrderId(order.id);
+      setCartSheetStep(3);
+      return order;
+    },
+    [buildItems, buildAddress, form.payment, currency, recordOrder, clearCart, setCartSheetStep],
+  );
+
   const onContinue = useCallback(async () => {
     if (cartSheetStep === 0) {
       setCartSheetStep(1);
@@ -96,38 +163,55 @@ export default function CartSheet() {
       setCartSheetStep(2);
       return;
     }
-    if (cartSheetStep === 2) {
+    if (cartSheetStep !== 2) return;
+
+    if (form.payment === 'cod') {
       setBusy(true);
       try {
-        const items = cart.map((c) => {
-          const p = productMap[c.id];
-          return {
-            productId: c.id,
-            name: p?.name || 'Item',
-            qty: c.qty,
-            price: p?.price || 0,
-            unit: c.variant?.unit || p?.unit || '',
-            image: p?.image || null,
-          };
-        });
-        const order = await placeOrder({
-          items,
-          address: {
-            name: form.name,
-            phone: form.phone,
-            line1: form.line1,
-            city: form.city,
-            zip: form.zip,
-          },
-          payment: form.payment,
-          currency,
-        });
-        recordOrder(order);
-        clearCart();
-        setOrderId(order.id);
-        setCartSheetStep(3);
+        await finalizeOrder({ gateway: 'cod', paymentStatus: 'placed' });
       } catch (e) {
         showToast(e.message || 'Could not place order');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    if (form.payment === 'stripe') {
+      setStripeOpen(true);
+      return;
+    }
+
+    if (form.payment === 'sslcommerz') {
+      setBusy(true);
+      try {
+        const tranId = makeSslcTransactionId();
+        const { gatewayPageUrl } = await initSslcSession({
+          tran_id: tranId,
+          amount: total.toFixed(2),
+          currency: currency?.code || 'BDT',
+          cus_name: form.name,
+          cus_phone: form.phone,
+          cus_add1: form.line1,
+          cus_city: form.city,
+          product_name: `${count} item(s)`,
+        });
+        await finalizeOrder({
+          id: tranId,
+          gateway: 'sslcommerz',
+          paymentStatus: 'pending_payment',
+          transactionId: tranId,
+        });
+        showToast('Opening secure checkout…');
+        await openGatewayPage(gatewayPageUrl);
+        // On web the page is leaving the SPA already. On native the in-app
+        // browser closed and we route to /payment-result for manual confirm.
+        if (Platform.OS !== 'web') {
+          closeCartSheet();
+          router.replace(`/payment-result?tran_id=${tranId}`);
+        }
+      } catch (e) {
+        showToast(e.message || 'Could not start SSLCommerz checkout');
       } finally {
         setBusy(false);
       }
@@ -136,13 +220,33 @@ export default function CartSheet() {
     cartSheetStep,
     setCartSheetStep,
     form,
-    cart,
-    productMap,
+    total,
+    count,
     currency,
-    recordOrder,
-    clearCart,
+    finalizeOrder,
     showToast,
+    closeCartSheet,
+    router,
   ]);
+
+  const onStripeComplete = useCallback(
+    async ({ transactionId }) => {
+      setStripeOpen(false);
+      setBusy(true);
+      try {
+        await finalizeOrder({
+          gateway: 'stripe',
+          paymentStatus: 'paid',
+          transactionId,
+        });
+      } catch (e) {
+        showToast(e.message || 'Payment failed');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [finalizeOrder, showToast],
+  );
 
   const onBack = useCallback(() => {
     if (cartSheetStep === 0) return closeCartSheet();
@@ -225,6 +329,7 @@ export default function CartSheet() {
   );
 
   return (
+    <>
     <BottomSheetModal
       ref={sheetRef}
       index={0}
@@ -285,6 +390,7 @@ export default function CartSheet() {
             form={form}
             onChange={onChange}
             errors={errors}
+            paymentOptions={paymentOptions}
           />
         ) : null}
 
@@ -302,6 +408,19 @@ export default function CartSheet() {
         ) : null}
       </BottomSheetScrollView>
     </BottomSheetModal>
+    {/* StripeCardSheet must live OUTSIDE BottomSheetModal — the bottom-sheet
+        renders through a Portal/FullWindowOverlay which doesn't propagate
+        StripeProvider context to descendants. Nesting StripeCardSheet inside
+        causes useStripe() to throw and the inner Modal renders blank, leaving
+        only the overlay visible. */}
+    <StripeCardSheet
+      open={stripeOpen}
+      amountLabel={formatPrice(total, currency)}
+      itemsCount={count}
+      onComplete={onStripeComplete}
+      onCancel={() => setStripeOpen(false)}
+    />
+    </>
   );
 }
 

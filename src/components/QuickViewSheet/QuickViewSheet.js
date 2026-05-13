@@ -130,6 +130,12 @@ export default function QuickViewSheet() {
           style={{
             width: '100%',
             maxWidth: cardMaxWidth,
+            // On mobile we use a percentage maxHeight; in production Hermes
+            // computes flex:1 on the child ScrollView as 0 when the parent
+            // height is purely percentage-bounded. Setting an explicit
+            // height alongside maxHeight gives the ScrollView a concrete
+            // size to fill.
+            height: isMobile ? '88%' : undefined,
             maxHeight: cardMaxHeight,
             backgroundColor: t.surface,
             borderTopLeftRadius: 20,

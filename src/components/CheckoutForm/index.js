@@ -1,1 +1,1 @@
-export { default, PAYMENT_OPTIONS, validateAddress } from './CheckoutForm';
+export { default, PAYMENT_OPTIONS, validateAddress, filterPaymentOptions } from './CheckoutForm';

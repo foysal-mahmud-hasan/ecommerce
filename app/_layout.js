@@ -22,6 +22,7 @@ import React, { useEffect } from 'react';
 import { Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import StripeProvider from '../src/components/StripeProvider';
 import Toast from '../src/components/Toast';
 import QuickViewSheet from '../src/components/QuickViewSheet';
 import CartSheet from '../src/components/CartSheet';
@@ -65,6 +66,7 @@ function ThemedShell() {
           */}
           <Stack.Screen name="checkout" />
           <Stack.Screen name="orders" />
+          <Stack.Screen name="payment-result" />
           <Stack.Screen name="tenant-switch" options={{ presentation: 'modal' }} />
         </Stack>
         <QuickViewSheet />
@@ -101,13 +103,15 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StoreProvider>
-          <BootstrapProvider>
-            <BottomSheetModalProvider>
-              <ThemedShell />
-            </BottomSheetModalProvider>
-          </BootstrapProvider>
-        </StoreProvider>
+        <StripeProvider>
+          <StoreProvider>
+            <BootstrapProvider>
+              <BottomSheetModalProvider>
+                <ThemedShell />
+              </BottomSheetModalProvider>
+            </BootstrapProvider>
+          </StoreProvider>
+        </StripeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -4,6 +4,7 @@
 .claude/
 .vscode/
 .idea/
+APPLICATION_GUIDE.md
 
 # logs and runtime output
 *.log

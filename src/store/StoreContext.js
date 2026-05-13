@@ -210,6 +210,20 @@ export function StoreProvider({ children }) {
     setOrders((prev) => [order, ...prev]);
   }, []);
 
+  // Look up by either order id or transactionId so the SSLCommerz callback
+  // (which only knows the tran_id) can flip the status without the caller
+  // needing to map between them.
+  const setOrderStatus = useCallback((key, { status, transactionId } = {}) => {
+    if (!key || !status) return;
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === key || o.transactionId === key
+          ? { ...o, status, transactionId: transactionId || o.transactionId }
+          : o,
+      ),
+    );
+  }, []);
+
   // ── quick-view ─────────────────────────────────────────────────────────
   const openQuickView = useCallback((id) => {
     if (!id) return;
@@ -288,6 +302,7 @@ export function StoreProvider({ children }) {
       // orders
       orders,
       recordOrder,
+      setOrderStatus,
       // quick-view
       quickViewProductId,
       openQuickView,
@@ -331,6 +346,7 @@ export function StoreProvider({ children }) {
       signOut,
       orders,
       recordOrder,
+      setOrderStatus,
       quickViewProductId,
       openQuickView,
       closeQuickView,

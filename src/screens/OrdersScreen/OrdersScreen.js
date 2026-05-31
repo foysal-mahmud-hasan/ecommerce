@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Badge from '../../components/Badge';
 import Chip from '../../components/Chip';
@@ -14,17 +14,25 @@ import { styles } from './OrdersScreen.styles';
 
 const TABS = ['All', 'Placed', 'Delivered'];
 
-function formatDate(ms) {
-  if (!ms) return '';
-  return new Date(ms).toLocaleDateString();
+function formatDate(o) {
+  // Backend orders carry a "DD-MM-YYYY" string under createdAt and a parsed
+  // ms timestamp under placedAt. Use whichever is available.
+  if (o?.createdAt) return o.createdAt;
+  if (o?.placedAt) return new Date(o.placedAt).toLocaleDateString();
+  return '';
 }
 
 export default function OrdersScreen() {
   const t = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { auth, orders, currency } = useStore();
+  const { auth, orders, currency, loadOrders, ordersStatus } = useStore();
   const [tab, setTab] = useState('All');
+
+  // Pull live history every time the screen mounts when the user is signed in.
+  useEffect(() => {
+    if (auth?.user?.id || auth?.userId) loadOrders();
+  }, [auth, loadOrders]);
 
   const filtered = useMemo(() => {
     if (tab === 'All') return orders;
@@ -98,7 +106,12 @@ export default function OrdersScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {filtered.length === 0 ? (
+        {filtered.length === 0 && ordersStatus === 'loading' ? (
+          <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+            <ActivityIndicator color={t.terra} />
+          </View>
+        ) : null}
+        {filtered.length === 0 && ordersStatus !== 'loading' ? (
           <Text style={[styles.empty, { color: t.ink3 }]}>
             No {tab.toLowerCase()} orders yet.
           </Text>
@@ -110,12 +123,12 @@ export default function OrdersScreen() {
           >
             <View style={styles.cardTop}>
               <View>
-                <Text style={[styles.orderId, { color: t.ink3 }]}>{o.id.toUpperCase()}</Text>
-                <Text style={[styles.orderDate, { color: t.ink2 }]}>
-                  {formatDate(o.placedAt)}
+                <Text style={[styles.orderId, { color: t.ink3 }]}>
+                  {(o.invoice || o.id || '').toString().toUpperCase()}
                 </Text>
+                <Text style={[styles.orderDate, { color: t.ink2 }]}>{formatDate(o)}</Text>
               </View>
-              <Badge tone={o.status === 'delivered' ? 'quiet' : 'sale'}>
+              <Badge tone={/delivered|completed/i.test(o.status || '') ? 'quiet' : 'sale'}>
                 {(o.status || 'placed').replace(/^\w/, (c) => c.toUpperCase())}
               </Badge>
             </View>

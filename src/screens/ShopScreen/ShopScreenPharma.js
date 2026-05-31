@@ -48,6 +48,8 @@ export default function ShopScreenPharma() {
     cart,
     productsCache,
     categories,
+    tags,
+    tagProducts,
     openQuickView,
     openPrescriptionSheet,
   } = useStore();
@@ -58,6 +60,26 @@ export default function ShopScreenPharma() {
   const [vitaminView, setVitaminView] = useState(isWide ? 'grid' : 'list');
 
   const all = productsCache?.all || [];
+
+  // Resolve a tag id to its loaded product objects. Bootstrap warms every tag
+  // returned by splash, so by the time the user has scrolled past the hero
+  // these are typically populated.
+  const productsForTag = (tagId) => {
+    const ids = (tagId && tagProducts?.[String(tagId)]) || [];
+    return ids
+      .map((id) => productsCache?.byId?.[id])
+      .filter(Boolean);
+  };
+
+  // Pick named tags by best-match against the tag name. Falls back to the
+  // first / second tag if no name matches.
+  const pickTag = (regex) => (tags || []).find((t) => regex.test(t.name || ''));
+  const topSellerTag = useMemo(() => pickTag(/seller|popular|top/i) || tags?.[0] || null, [tags]);
+  const vitaminTag = useMemo(
+    () => pickTag(/vitamin|supplement|wellness/i) || tags?.[1] || tags?.[0] || null,
+    [tags],
+  );
+
   const topBrands = useMemo(
     () =>
       [...(categories || [])]
@@ -105,24 +127,33 @@ export default function ShopScreenPharma() {
   );
 
   const wideCount = bp === 'desktop' ? 8 : bp === 'tablet' ? 6 : 6;
-  const mostSearched = useMemo(
-    () => sortInStockFirst(all).slice(0, wideCount),
-    [all, wideCount],
-  );
+  // Primary rail comes from the tag the merchant flagged as "Top Seller"
+  // (or whichever tag splash returns first). Bootstrap pre-warms these tags
+  // so by the time the user scrolls here, productsForTag returns objects.
+  const mostSearched = useMemo(() => {
+    const fromTag = sortInStockFirst(productsForTag(topSellerTag?.id)).slice(0, wideCount);
+    if (fromTag.length > 0) return fromTag;
+    // Fallback while warmup is pending — show whatever is already in cache.
+    return sortInStockFirst(all).slice(0, wideCount);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [all, tagProducts, topSellerTag, wideCount]);
+
   const onSale = useMemo(
     () => sortInStockFirst(all.filter((p) => p.was)).slice(0, 8),
     [all],
   );
+
+  // Secondary rail uses the next matching tag — wellness/vitamins/supplements
+  // — falling back to the first tag's overflow if the merchant hasn't
+  // flagged a second group.
   const vitaminProducts = useMemo(() => {
-    const vitaminCat = (categories || []).find((c) =>
-      /vitamin|supplement/i.test(c.name || ''),
-    );
-    if (vitaminCat) {
-      const list = productsCache?.byCategoryId?.[String(vitaminCat.id)] || [];
-      if (list.length > 0) return sortInStockFirst(list).slice(0, wideCount);
-    }
+    const fromTag = sortInStockFirst(productsForTag(vitaminTag?.id)).slice(0, wideCount);
+    if (fromTag.length > 0) return fromTag;
     return sortInStockFirst([...all].slice(-16).reverse()).slice(0, wideCount);
-  }, [all, categories, productsCache, wideCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [all, tagProducts, vitaminTag, wideCount]);
+
+  const vitaminTitle = vitaminTag?.name || 'Vitamins & Supplements';
 
   const renderRail = (products, view) => {
     if (view === 'grid') {
@@ -352,10 +383,10 @@ export default function ShopScreenPharma() {
         </View>
       ) : null}
 
-      {/* Vitamins & Supplements */}
+      {/* Secondary tag rail */}
       <View style={styles.section}>
         <SectionHead
-          title="Vitamins & Supplements"
+          title={vitaminTitle}
           action="View all"
           onAction={() => router.push('/products')}
           rightSlot={<ViewToggle value={vitaminView} onChange={setVitaminView} />}

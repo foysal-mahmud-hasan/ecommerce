@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Badge from '../../components/Badge';
+import CategoryPickerSheet from '../../components/CategoryPickerSheet';
 import Chip from '../../components/Chip';
 import ComboCard from '../../components/ComboCard';
 import FragButton from '../../components/FragButton';
-import { IconBag, IconChevR, IconSearch } from '../../components/Icons';
+import { IconBag, IconChevR, IconSearch, IconSliders } from '../../components/Icons';
 import ProductCard from '../../components/ProductCard';
 import ProductCardCompact from '../../components/ProductCardCompact';
 import ProductImage from '../../components/ProductImage';
@@ -31,47 +32,73 @@ export default function ShopScreen() {
   const { cart, comboLayout } = useStore();
   const cartCount = fragCartCount(cart);
   const heroProduct = fragProductMap.p4;
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: t.bg }]}
-      contentContainerStyle={[
-        styles.scrollContent,
-        { paddingTop: insets.top + 8, paddingBottom: layout.tabBarHeight + insets.bottom + 24 },
-      ]}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Top bar */}
-      <View style={styles.topBar}>
-        <View>
-          <Text style={[styles.season, { color: t.ink3 }]}>SS · 26</Text>
-          <Text style={[styles.brand, { color: t.ink }]}>Fragouras</Text>
-        </View>
-        <View style={styles.topActions}>
-          <Pressable
-            onPress={() => router.push('/(tabs)/search')}
-            hitSlop={layout.hitSlop}
-            style={[styles.topIconBtn, { backgroundColor: t.surface, borderColor: t.line }]}
-            accessibilityLabel="Search"
-          >
-            <IconSearch color={t.ink} />
-          </Pressable>
-          <Pressable
-            onPress={() => router.push('/(tabs)/cart')}
-            hitSlop={layout.hitSlop}
-            style={[styles.topIconBtn, { backgroundColor: t.surface, borderColor: t.line }]}
-            accessibilityLabel="Cart"
-          >
-            <IconBag color={t.ink} />
-            {cartCount > 0 ? (
-              <View style={[styles.topBadge, { backgroundColor: t.terra }]}>
-                <Text style={styles.topBadgeText}>{cartCount}</Text>
-              </View>
-            ) : null}
-          </Pressable>
+    <View style={[styles.container, { backgroundColor: t.bg }]}>
+      {/* Top bar — lifted out of ScrollView so it has its own elevated surface
+          (white bg + bottom hairline) that mirrors MobileHeader on every
+          other screen. Keeps the navbar identifiable from the content area. */}
+      <View
+        style={[
+          styles.topBarWrap,
+          {
+            paddingTop: insets.top + 8,
+            backgroundColor: t.surface,
+            borderBottomColor: t.line,
+            ...(Platform.OS === 'web'
+              ? { boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)' }
+              : null),
+          },
+        ]}
+      >
+        <View style={styles.topBar}>
+          <View>
+            <Text style={[styles.season, { color: t.ink3 }]}>SS · 26</Text>
+            <Text style={[styles.brand, { color: t.ink }]}>Fragouras</Text>
+          </View>
+          <View style={styles.topActions}>
+            <Pressable
+              onPress={() => router.push('/(tabs)/search')}
+              hitSlop={layout.hitSlop}
+              style={[styles.topIconBtn, { backgroundColor: t.surface, borderColor: t.line }]}
+              accessibilityLabel="Search"
+            >
+              <IconSearch color={t.ink} />
+            </Pressable>
+            <Pressable
+              onPress={() => setPickerOpen(true)}
+              hitSlop={layout.hitSlop}
+              style={[styles.topIconBtn, { backgroundColor: t.surface, borderColor: t.line }]}
+              accessibilityLabel="Search by category"
+            >
+              <IconSliders color={t.ink} />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/(tabs)/cart')}
+              hitSlop={layout.hitSlop}
+              style={[styles.topIconBtn, { backgroundColor: t.surface, borderColor: t.line }]}
+              accessibilityLabel="Cart"
+            >
+              <IconBag color={t.ink} />
+              {cartCount > 0 ? (
+                <View style={[styles.topBadge, { backgroundColor: t.terra }]}>
+                  <Text style={styles.topBadgeText}>{cartCount}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          </View>
         </View>
       </View>
 
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.scrollContent,
+        { paddingTop: 8, paddingBottom: layout.tabBarHeight + insets.bottom + 24 },
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Hero */}
       <View style={styles.heroPad}>
         <View style={[styles.hero, { backgroundColor: t.surfaceDeep }]}>
@@ -270,5 +297,19 @@ export default function ShopScreen() {
         </View>
       </View>
     </ScrollView>
+
+    <CategoryPickerSheet
+      visible={pickerOpen}
+      onClose={() => setPickerOpen(false)}
+      selectedId={null}
+      onSelect={(id) =>
+        router.push(
+          id == null
+            ? '/(tabs)/search'
+            : { pathname: '/(tabs)/search', params: { categoryId: String(id) } },
+        )
+      }
+    />
+    </View>
   );
 }

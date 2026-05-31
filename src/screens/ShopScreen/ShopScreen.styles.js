@@ -10,6 +10,9 @@ export const styles = StyleSheet.create({
     paddingBottom: 8,
     zIndex: 20,
   },
+  topBarWrap: {
+    borderBottomWidth: 1,
+  },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',

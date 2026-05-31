@@ -53,6 +53,8 @@ Thumbs.db
 .env
 .env.*
 .env*.local
+# keep the placeholder/template committed
+!.env.example
 
 # typescript
 *.tsbuildinfo
@@ -60,3 +62,4 @@ Thumbs.db
 # generated native folders
 /ios
 /android
+package-lock.json

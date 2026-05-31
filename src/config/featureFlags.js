@@ -3,8 +3,8 @@
 // fragments the API.
 export const featureFlags = {
   useRealSplashApi: true,
-  useRealCategoriesApi: false,
-  useRealProductsApi: false,
-  useRealAuthApi: false,
-  useRealOrdersApi: false,
+  useRealCategoriesApi: true,
+  useRealProductsApi: true,
+  useRealAuthApi: true,
+  useRealOrdersApi: true,
 };

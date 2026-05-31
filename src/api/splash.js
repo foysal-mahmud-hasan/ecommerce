@@ -11,16 +11,47 @@ import { restaurantSplashMock } from '../data/restaurantMock';
 
 const SPLASH_TTL_MS = 24 * 60 * 60 * 1000;
 
-// Normalize a raw API product into the shape consumed by the UI. The original
-// app's ProductCard reads {id, name, price, was, brand, palette, rating, ...},
-// so we map API fields to those plus keep the raw record under `_raw` for
-// PDP-level details.
-function normalizeProduct(p) {
+function normalizeMeasurement(m) {
+  if (!m || typeof m !== 'object') return null;
+  // tag-products returns "unit name" (with space); detail returns unit_name.
+  const unitName = m.unit_name ?? m['unit name'] ?? '';
+  return {
+    id: m.id != null ? String(m.id) : null,
+    unitId: m.unit_id ?? null,
+    unitName,
+    slug: m.slug || '',
+    isBaseUnit: !!m.is_base_unit,
+    isSales: m.is_sales == null ? true : !!m.is_sales,
+    isPurchase: !!m.is_purchase,
+    quantity: Number(m.quantity ?? 0),
+    salesPrice: Number(m.sales_price ?? 0),
+    raw: m,
+  };
+}
+
+// Normalize a raw API product into the shape consumed by the UI. Handles two
+// shapes from the live backend:
+//   - LIST  (category-products, tag-products): {id, product_name, unit_name,
+//     category_name, category_id, feature_image, price (=selling),
+//     stock_quantity, measurements:[]}
+//   - DETAIL (details-product): {id, stock_id, product_id, product_name,
+//     category (name), category_id, unit_name, quantity (=stock),
+//     price (=cost), sales_price (=selling), barcode, measurements:[…]}
+// The `id` field on both shapes IS the stock_id — that's what details-product
+// expects. Keep raw under `_raw` for PDP-level details.
+export function normalizeProduct(p) {
+  if (!p || typeof p !== 'object') return null;
   const name = p.product_name || p.name || 'Untitled';
-  const price = Number(p.sales_price ?? p.price ?? 0);
-  const wasMaybe = Number(p.price ?? 0);
-  // Only show strikethrough if sales_price is meaningfully lower than price.
-  const was = wasMaybe > price ? wasMaybe : null;
+  // sales_price (detail) or price (list) is the selling price the user pays.
+  const selling = Number(p.sales_price ?? p.price ?? 0);
+  // For "was" / strikethrough we ONLY trust list-shape: when both a list
+  // `price` and a smaller `sales_price` are present. Detail's `price` is the
+  // cost price and must never be shown as a strikethrough.
+  let was = null;
+  if (p.sales_price != null && p.price != null) {
+    const list = Number(p.price);
+    if (list > selling) was = list;
+  }
   const rawImage = typeof p.feature_image === 'string' ? p.feature_image.trim() : '';
   let featureImage = null;
   if (rawImage) {
@@ -32,22 +63,27 @@ function normalizeProduct(p) {
       featureImage = `${base}/${path}`;
     }
   }
+  const brand = p.category || p.category_name || '';
+  const stock = Number(p.quantity ?? p.stock_quantity ?? 0);
+  const measurements = Array.isArray(p.measurements)
+    ? p.measurements.map(normalizeMeasurement).filter(Boolean)
+    : [];
   return {
     id: String(p.id),
     productId: p.product_id ?? p.id,
     stockId: p.stock_id ?? p.id,
     name,
-    brand: p.category || '',
+    brand,
     cat: p.category_id ? String(p.category_id) : '',
     categoryId: p.category_id,
-    categoryName: p.category || '',
-    price,
+    categoryName: brand,
+    price: selling,
     was,
     image: featureImage,
     unit: p.unit_name || 'Pcs',
     unitId: p.unit_id,
-    stock: typeof p.quantity === 'number' ? p.quantity : 0,
-    measurements: Array.isArray(p.measurements) ? p.measurements : [],
+    stock,
+    measurements,
     barcode: p.barcode || '',
     slug: p.slug || '',
     rating: typeof p.rating === 'number' ? p.rating : 4.5,
@@ -69,12 +105,27 @@ function normalizeCategory(c) {
   };
 }
 
+// Tag groups from splash come as {tag_id, tag_name, products:[stub,…]}.
+// `products` are stubs (often partial) that act as a hint of what's in the
+// tag — we still hit /tag-products/{id} for the real list. Keep stubs around
+// so the home rails can render skeleton-ish placeholders before the fetch
+// resolves if we ever want to.
+export function normalizeTag(t) {
+  if (!t || typeof t !== 'object') return null;
+  return {
+    id: String(t.tag_id ?? t.id ?? ''),
+    name: t.tag_name || t.name || '',
+    productStubs: Array.isArray(t.products) ? t.products : [],
+  };
+}
+
 function indexProducts(list) {
   const all = [];
   const byId = {};
   const byCategoryId = {};
   for (const raw of list) {
     const p = normalizeProduct(raw);
+    if (!p) continue;
     all.push(p);
     byId[p.id] = p;
     const ck = String(p.categoryId);
@@ -87,6 +138,10 @@ function indexProducts(list) {
 function buildPayload(rawData, tenantId) {
   const dc = rawData.domain_config || {};
   const currency = dc.inventory_config?.currency || { code: 'BDT', symbol: '৳' };
+  // The live splash no longer returns a `product` array — products are loaded
+  // lazily via the per-tag / per-category / per-detail endpoints. The mock
+  // splash for the restaurant tenant still bundles products, so we keep
+  // indexProducts working for that path.
   return {
     tenant: {
       id: tenantId,
@@ -96,6 +151,7 @@ function buildPayload(rawData, tenantId) {
       domainConfig: dc,
     },
     categories: (rawData.category || []).map(normalizeCategory),
+    tags: (rawData.tags || []).map(normalizeTag).filter(Boolean),
     productsCache: indexProducts(rawData.product || []),
   };
 }

@@ -1,15 +1,32 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, layout } from '../../theme';
 import { IconChevL } from '../Icons';
 import { styles } from './MobileHeader.styles';
 
+// Navbar elevation rule: header sits on `t.surface` (white) with a 1px
+// bottom hairline + a soft web shadow. The body of every screen uses `t.bg`
+// (cream / off-white), so the white header reads as a separate surface
+// without needing a heavy color block.
 export default function MobileHeader({ title, onBack, right, serif = true }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.wrap, { paddingTop: insets.top + 8, backgroundColor: t.bg }]}>
+    <View
+      style={[
+        styles.wrap,
+        {
+          paddingTop: insets.top + 8,
+          backgroundColor: t.surface,
+          borderBottomColor: t.line,
+          borderBottomWidth: 1,
+          ...(Platform.OS === 'web'
+            ? { boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)' }
+            : null),
+        },
+      ]}
+    >
       <View style={styles.row}>
         {onBack ? (
           <Pressable

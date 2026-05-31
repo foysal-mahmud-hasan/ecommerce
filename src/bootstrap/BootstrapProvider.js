@@ -25,61 +25,98 @@ import BootstrapLoadingScreen from './BootstrapLoadingScreen';
 // Switching tenants is a re-run of step 2-3 with new credentials.
 
 export default function BootstrapProvider({ children }) {
-  const { setSplashData, setBootstrapStatus, setTenant } = useStore();
+  const {
+    setSplashData,
+    setBootstrapStatus,
+    setTenant,
+    setCredentials: setStoreCredentials,
+    loadTagProducts,
+  } = useStore();
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState(null);
   const [credentials, setCredentials] = useState(null);
   const [, setForcedTenantId] = useState(null);
+
+  // After splash succeeds, warm the tag groups so the home screen has product
+  // rails ready immediately. Tags are the primary product-loading mechanism
+  // for the live backend (per plan).
+  const warmTags = useCallback(
+    (payload) => {
+      const list = payload?.tags || [];
+      list.forEach((t) => {
+        if (t?.id) loadTagProducts(t.id).catch(() => {});
+      });
+    },
+    [loadTagProducts],
+  );
 
   const run = useCallback(async (creds, opts = {}) => {
     setStatus('loading');
     setError(null);
     setBootstrapStatus('loading');
     try {
-      // Decide tenant from stored hint (if any) — restaurant uses mock data,
-      // pharma hits the real API with creds.
+      // Tenant identity is decided by the splash backend response
+      // (domain_config.business_model_id), NOT by a stored hint. A leftover
+      // {id:'restaurant'} in AsyncStorage used to short-circuit us into the
+      // mock and never call the live backend — that trap is gone.
+      //
+      // The mock path is only entered when the caller explicitly opts in
+      // (switchTenant({useMock:true,…})). The stored tenant id is read only
+      // as a hint for the stale-while-revalidate cache key — the cache paint
+      // is overwritten by the live response anyway.
+      const useMock = opts.useMock === true;
       const storedTenant = await getJSON(storageKeys.tenant);
-      const knownTenantId = opts.tenantId || storedTenant?.id || TENANT_PHARMA;
-      const useMock = knownTenantId === TENANT_RESTAURANT;
+      const cacheHintId = opts.tenantId || storedTenant?.id || TENANT_PHARMA;
 
-      // Stale-while-revalidate: paint cache immediately if available.
-      const cached = await loadCachedSplash(knownTenantId);
+      // Stale-while-revalidate: paint cache immediately if available. The
+      // cached payload's `tenant.id` is whatever was detected on the previous
+      // run — we trust it for the first frame and then let the live response
+      // correct it in the background.
+      const cached = await loadCachedSplash(cacheHintId);
       if (cached?.payload) {
+        const cachedTenantId = cached.payload.tenant?.id || cacheHintId;
         setSplashData(cached.payload);
         setStatus('ready');
         setBootstrapStatus('ready');
-        // background revalidate — only call setTenant if the tenant id
-        // actually changed, otherwise we needlessly clear the cart on every
-        // cold start (which can also confuse Expo Go's fast refresh).
+        warmTags(cached.payload);
+        // background revalidate — only call setTenant if the live response
+        // changes the tenant id, otherwise we needlessly clear the cart on
+        // every cold start (which can also confuse Expo Go's fast refresh).
         fetchSplash({ credentials: creds, useMock })
           .then((fresh) => {
-            const detected = useMock ? knownTenantId : detectTenantId(fresh.tenant.domainConfig);
+            const detected = useMock
+              ? fresh.tenant?.id || cachedTenantId
+              : detectTenantId(fresh.tenant.domainConfig);
             const next = { ...fresh, tenant: { ...fresh.tenant, id: detected } };
             persistSplash(detected, next).catch(() => {});
             setSplashData(next);
-            if (detected !== knownTenantId) {
+            if (detected !== cachedTenantId) {
               setTenant(next.tenant).catch(() => {});
             }
+            warmTags(next);
           })
           .catch(() => {});
         return;
       }
 
-      // No cache — must fetch blocking.
+      // No cache — must fetch blocking. Tenant comes from the response.
       const fresh = await fetchSplash({ credentials: creds, useMock });
-      const detected = useMock ? knownTenantId : detectTenantId(fresh.tenant.domainConfig);
+      const detected = useMock
+        ? fresh.tenant?.id || cacheHintId
+        : detectTenantId(fresh.tenant.domainConfig);
       const next = { ...fresh, tenant: { ...fresh.tenant, id: detected } };
       await persistSplash(detected, next);
       setSplashData(next);
       await setTenant(next.tenant);
       setStatus('ready');
       setBootstrapStatus('ready');
+      warmTags(next);
     } catch (e) {
       setError(e);
       setStatus('error');
       setBootstrapStatus('error');
     }
-  }, [setSplashData, setBootstrapStatus, setTenant]);
+  }, [setSplashData, setBootstrapStatus, setTenant, warmTags]);
 
   // First-mount: load creds, then run.
   useEffect(() => {
@@ -89,6 +126,7 @@ export default function BootstrapProvider({ children }) {
       const creds = stored || DEFAULT_CREDENTIALS;
       if (!alive) return;
       setCredentials(creds);
+      setStoreCredentials(creds);
       await run(creds);
     })();
     return () => {
@@ -102,18 +140,23 @@ export default function BootstrapProvider({ children }) {
   }, [credentials, run]);
 
   // Imperative tenant switch — exposed via window-on-store for now,
-  // wrapped by AccountScreen / StoreSwitcherScreen.
+  // wrapped by AccountScreen / StoreSwitcherScreen. Restaurant is mock-only
+  // today; pharma always hits the live API. Callers may pass an explicit
+  // `useMock` to force the path; otherwise it's inferred from the target id.
   const switchTenant = useCallback(
-    async ({ tenantId, credentials: nextCreds }) => {
+    async ({ tenantId, credentials: nextCreds, useMock }) => {
       const creds = nextCreds || credentials;
       if (nextCreds) {
         await setJSON(storageKeys.credentials, nextCreds);
         setCredentials(nextCreds);
+        setStoreCredentials(nextCreds);
       }
       setForcedTenantId(tenantId || null);
-      await run(creds, { tenantId });
+      const resolvedUseMock =
+        typeof useMock === 'boolean' ? useMock : tenantId === TENANT_RESTAURANT;
+      await run(creds, { tenantId, useMock: resolvedUseMock });
     },
-    [credentials, run],
+    [credentials, run, setStoreCredentials],
   );
 
   // Expose retry+switch via a context stub. Cheap — only screens that need

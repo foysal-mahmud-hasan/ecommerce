@@ -1,38 +1,50 @@
-import { featureFlags } from '../config/featureFlags';
+import { request, ApiError } from './client';
+import { buildApiHeaders } from './headers';
+import { normalizeProduct } from './splash';
+import { API_ECOMMERCE_BASE } from '../config/tenants';
 
-// Mock-first. Reads from the in-memory productsCache that BootstrapProvider
-// already loaded. Real impl will hit a paginated endpoint later.
+// All product fetches use the X-Api-* header auth scheme. The backend ignores
+// pagination params today (see plan), so `page` is reserved for forward-compat.
 
-export async function listProducts({ productsCache, params = {} }) {
-  if (featureFlags.useRealProductsApi) {
-    throw new Error('Real products API not wired yet');
+function unwrapList(json) {
+  if (!json || json.status !== 200 || !json.data) {
+    throw new ApiError('parse', json?.status ?? 0, 'Unexpected list payload');
   }
-  let list = productsCache?.all || [];
-  if (params.categoryId) {
-    list = productsCache.byCategoryId[String(params.categoryId)] || [];
-  }
-  if (params.q) {
-    const q = String(params.q).toLowerCase().trim();
-    if (q) list = list.filter((p) => p._search.includes(q));
-  }
-  if (params.sort === 'price-asc') list = [...list].sort((a, b) => a.price - b.price);
-  else if (params.sort === 'price-desc') list = [...list].sort((a, b) => b.price - a.price);
-  else if (params.sort === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name));
-  const page = params.page ?? 0;
-  const pageSize = params.pageSize ?? 40;
-  const start = page * pageSize;
+  const products = Array.isArray(json.data.products) ? json.data.products : [];
+  const pagination = json.data.pagination || null;
   return {
-    items: list.slice(start, start + pageSize),
-    total: list.length,
-    page,
-    pageSize,
-    hasMore: start + pageSize < list.length,
+    items: products.map(normalizeProduct).filter(Boolean),
+    pagination,
   };
 }
 
-export async function getProduct({ productsCache, id }) {
-  if (featureFlags.useRealProductsApi) {
-    throw new Error('Real products API not wired yet');
-  }
-  return productsCache?.byId?.[String(id)] || null;
+export async function getCategoryProducts({ credentials, categoryId, page = 1, signal }) {
+  if (!credentials) throw new ApiError('http', 0, 'Missing credentials');
+  if (categoryId == null) throw new ApiError('http', 0, 'Missing categoryId');
+  const url = `${API_ECOMMERCE_BASE}/category-products/${encodeURIComponent(
+    String(categoryId),
+  )}?page=${page}`;
+  const json = await request(url, { headers: buildApiHeaders(credentials), signal });
+  return unwrapList(json);
+}
+
+export async function getTagProducts({ credentials, tagId, page = 1, signal }) {
+  if (!credentials) throw new ApiError('http', 0, 'Missing credentials');
+  if (tagId == null) throw new ApiError('http', 0, 'Missing tagId');
+  const url = `${API_ECOMMERCE_BASE}/tag-products/${encodeURIComponent(
+    String(tagId),
+  )}?page=${page}`;
+  const json = await request(url, { headers: buildApiHeaders(credentials), signal });
+  return unwrapList(json);
+}
+
+export async function getProductDetail({ credentials, stockId, signal }) {
+  if (!credentials) throw new ApiError('http', 0, 'Missing credentials');
+  if (stockId == null) throw new ApiError('http', 0, 'Missing stockId');
+  const url = `${API_ECOMMERCE_BASE}/details-product/${encodeURIComponent(String(stockId))}`;
+  const json = await request(url, { headers: buildApiHeaders(credentials), signal });
+  if (!json || json.status !== 200) return null;
+  const data = json.data;
+  if (!data) return null;
+  return normalizeProduct(data);
 }

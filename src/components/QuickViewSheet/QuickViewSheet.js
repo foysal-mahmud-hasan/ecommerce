@@ -31,12 +31,27 @@ export default function QuickViewSheet() {
     addToCart,
     currency,
     openQuickView,
+    loadProductDetail,
+    loadCategoryProducts,
   } = useStore();
 
   const product = useMemo(() => {
     if (!quickViewProductId) return null;
     return productsCache?.byId?.[quickViewProductId] || null;
   }, [quickViewProductId, productsCache]);
+
+  // If the user opens quick-view on a stub product (e.g. tagged-only, not yet
+  // detail-fetched), pull the detail and merge it into cache.
+  useEffect(() => {
+    if (quickViewProductId && !product) {
+      loadProductDetail(quickViewProductId);
+    }
+  }, [quickViewProductId, product, loadProductDetail]);
+
+  // Lazy-load the product's category so the related-items grid has data.
+  useEffect(() => {
+    if (product?.categoryId) loadCategoryProducts(product.categoryId);
+  }, [product?.categoryId, loadCategoryProducts]);
 
   const onAlreadyOnPdp = useMemo(() => {
     if (!quickViewProductId || !pathname) return false;
@@ -47,10 +62,10 @@ export default function QuickViewSheet() {
 
   const measurements = useMemo(() => {
     const list = Array.isArray(product?.measurements) ? product.measurements : [];
-    const saleable = list.filter((m) => m.is_sales === 1 || m.is_sales === undefined);
+    const saleable = list.filter((m) => m.isSales !== false && m.is_sales !== 0);
     if (saleable.length > 0) return saleable.slice(0, 3);
     return [
-      { unit_id: 'default', label: `1 ${product?.unit || 'Unit'}`, quantity: 1 },
+      { unitId: 'default', label: `1 ${product?.unit || 'Unit'}`, quantity: 1 },
     ];
   }, [product]);
 
@@ -61,7 +76,8 @@ export default function QuickViewSheet() {
     if (!product) return;
     const seed = {};
     measurements.forEach((m, i) => {
-      seed[m.unit_id ?? `idx-${i}`] = i === 0 ? 1 : 0;
+      const key = m.unitId ?? m.unit_id ?? `idx-${i}`;
+      seed[key] = i === 0 ? 1 : 0;
     });
     setQtyByUnit(seed);
     setRelatedOpen(false);
@@ -81,12 +97,12 @@ export default function QuickViewSheet() {
   const handleAdd = useCallback(() => {
     if (!product) return;
     measurements.forEach((m, i) => {
-      const key = m.unit_id ?? `idx-${i}`;
+      const key = m.unitId ?? m.unit_id ?? `idx-${i}`;
       const q = qtyByUnit[key] || 0;
       if (q > 0) {
         addToCart(product.id, q, {
-          unit: m.unit_name || m.label || product.unit,
-          unitId: m.unit_id,
+          unit: m.unitName || m.unit_name || m.label || product.unit,
+          unitId: m.unitId ?? m.unit_id,
           price: product.price,
         });
       }
@@ -96,8 +112,13 @@ export default function QuickViewSheet() {
 
   const handleMore = useCallback(() => {
     if (!product) return;
+    // Navigate first, then close. The modal's own `onAlreadyOnPdp` guard
+    // hides it on the new route, so there's no double-mount. A close-first +
+    // setTimeout sequence (the previous approach) introduced a ~50ms gap
+    // where the backdrop disappeared before the PDP painted — visible as a
+    // flicker.
+    router.push(`/product/${product.id}`);
     closeQuickView();
-    setTimeout(() => router.push(`/product/${product.id}`), 50);
   }, [product, router, closeQuickView]);
 
   if (!product) return null;
@@ -315,17 +336,21 @@ export default function QuickViewSheet() {
                   </Text>
                 </View>
 
-                {/* Measurement rows */}
+                {/* Measurement rows — each is a bordered selection card so the
+                    user can read the row as a button. Active (qty > 0) borrows
+                    the same border-only selection rule as chips/tabs. */}
                 <View style={{ gap: 10, marginBottom: 18 }}>
                   {measurements.map((m, i) => {
-                    const key = m.unit_id ?? `idx-${i}`;
+                    const key = m.unitId ?? m.unit_id ?? `idx-${i}`;
                     const qty = qtyByUnit[key] || 0;
+                    const unitName = m.unitName || m.unit_name || product.unit || 'Unit';
                     const lineTotal = qty * (Number(product.price) || 0) * (Number(m.quantity) || 1);
                     const label =
                       m.label ||
-                      (m.unit_name && m.quantity
-                        ? `1 ${m.unit_name} = ${m.quantity} Pcs`
-                        : m.unit_name || `1 ${product.unit || 'Unit'}`);
+                      (unitName && m.quantity
+                        ? `1 ${unitName} = ${m.quantity} Pcs`
+                        : unitName || `1 ${product.unit || 'Unit'}`);
+                    const selected = qty > 0;
                     return (
                       <View
                         key={key}
@@ -334,13 +359,19 @@ export default function QuickViewSheet() {
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           gap: 10,
+                          paddingVertical: 10,
+                          paddingHorizontal: 12,
+                          borderRadius: 10,
+                          borderWidth: selected ? 1.5 : 1,
+                          borderColor: selected ? t.terra : t.line,
+                          backgroundColor: 'transparent',
                         }}
                       >
                         <Text
                           style={{
-                            fontFamily: t.fonts.sans,
+                            fontFamily: selected ? t.fonts.sansSemiBold : t.fonts.sans,
                             fontSize: 13,
-                            color: t.ink2,
+                            color: selected ? t.terra : t.ink2,
                             flex: 1,
                           }}
                           numberOfLines={1}

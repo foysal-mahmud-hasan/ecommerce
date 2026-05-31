@@ -154,7 +154,15 @@ export default function ProductCard({
               <Text
                 style={[
                   styles.name,
-                  { color: t.ink, fontSize: isMobile ? 14 : 14, lineHeight: 18 },
+                  {
+                    color: t.ink,
+                    fontSize: isMobile ? 14 : 14,
+                    lineHeight: 18,
+                    // Reserve 3 lines on mobile / 2 on wide so the brand line
+                    // and the price row below stay at a fixed vertical offset
+                    // across cards in the same list.
+                    minHeight: 18 * (isMobile ? 3 : 2),
+                  },
                 ]}
                 numberOfLines={isMobile ? 3 : 2}
               >
@@ -164,6 +172,8 @@ export default function ProductCard({
                 style={{
                   fontFamily: t.fonts.sans,
                   fontSize: 11,
+                  lineHeight: 15,
+                  minHeight: 15,
                   color: t.ink3,
                   marginTop: 2,
                 }}
@@ -260,38 +270,49 @@ export default function ProductCard({
           </Pressable>
         ) : null}
       </View>
+      {/* Reserve fixed vertical space for the title/brand/unit text so cards in
+          a grid line up regardless of how each product's name wraps. Short
+          names leave whitespace below; the price row + Add button always sit
+          at the same offset. */}
       <View style={[styles.body, compact && { paddingTop: 8 }]}>
-        {t.showProductBrand !== false && product.brand ? (
+        {t.showProductBrand !== false ? (
           <Text
-            style={[styles.brand, { color: t.ink3 }, compact && { fontSize: 10, marginBottom: 2 }]}
+            style={[
+              styles.brand,
+              { color: t.ink3, minHeight: compact ? 12 : 13 },
+              compact && { fontSize: 10, marginBottom: 2 },
+            ]}
             numberOfLines={1}
           >
-            {product.brand}
+            {product.brand || ' '}
           </Text>
         ) : null}
         <Text
           style={[
             styles.name,
-            { color: t.ink },
+            {
+              color: t.ink,
+              minHeight: (compact ? 17 : 18) * (compact ? 3 : 2),
+            },
             compact && { fontSize: 13, lineHeight: 17, marginBottom: 3 },
           ]}
           numberOfLines={compact ? 3 : 2}
         >
           {product.name}
         </Text>
-        {product.unit ? (
-          <Text
-            style={{
-              fontFamily: t.fonts.sans,
-              fontSize: compact ? 11 : 11,
-              color: t.ink3,
-              marginBottom: compact ? 4 : 6,
-            }}
-            numberOfLines={1}
-          >
-            {product.unit}
-          </Text>
-        ) : null}
+        <Text
+          style={{
+            fontFamily: t.fonts.sans,
+            fontSize: 11,
+            lineHeight: 15,
+            minHeight: 15,
+            color: t.ink3,
+            marginBottom: compact ? 4 : 6,
+          }}
+          numberOfLines={1}
+        >
+          {product.unit || ' '}
+        </Text>
         <View style={styles.row}>
           <Price price={product.price} was={product.was} size={compact ? 12 : 13} />
           {t.showProductRating ? <Rating value={product.rating} size={10} /> : null}

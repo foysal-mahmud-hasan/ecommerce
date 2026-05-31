@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { BasketIconButton } from '../../../components/AddToCartButton';
-import { IconChevR, IconSearch, IconX } from '../../../components/Icons';
+import CategoryPickerSheet from '../../../components/CategoryPickerSheet';
+import { IconChevR, IconSearch, IconSliders, IconX } from '../../../components/Icons';
 import RemoteImage from '../../../components/RemoteImage';
 import { useStore } from '../../../store/StoreContext';
 import { layout, useTheme } from '../../../theme';
@@ -27,6 +28,7 @@ export default function HomeSearchBar({ query, onQueryChange, placeholder }) {
   const router = useRouter();
   const { productsCache, currency } = useStore();
   const debounced = useDebounced(query, 200);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const results = useMemo(() => {
     const all = productsCache?.all || [];
@@ -72,6 +74,17 @@ export default function HomeSearchBar({ query, onQueryChange, placeholder }) {
               <IconX color={t.ink3} size={12} />
             </Pressable>
           ) : null}
+          {/* Filter icon — opens the category picker so the user can scope a
+              search to one category. Mirrors the same affordance used on the
+              catalog search row. */}
+          <Pressable
+            onPress={() => setPickerOpen(true)}
+            hitSlop={layout.hitSlop}
+            style={[styles.filterBtn, { borderColor: t.line }]}
+            accessibilityLabel="Search by category"
+          >
+            <IconSliders color={t.ink} size={16} />
+          </Pressable>
         </View>
 
         {isActive ? (
@@ -127,6 +140,22 @@ export default function HomeSearchBar({ query, onQueryChange, placeholder }) {
           </View>
         ) : null}
       </View>
+
+      <CategoryPickerSheet
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        selectedId={null}
+        onSelect={(id) => {
+          if (id == null) {
+            router.push('/products');
+          } else {
+            router.push({
+              pathname: '/products',
+              params: { categoryId: String(id) },
+            });
+          }
+        }}
+      />
     </View>
   );
 }

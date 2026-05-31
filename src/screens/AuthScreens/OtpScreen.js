@@ -7,12 +7,14 @@ import { verifyOtp } from '../../api/auth';
 import { useStore } from '../../store/StoreContext';
 import { useTheme } from '../../theme';
 
+const OTP_LEN = 5;
+
 export default function OtpScreen() {
   const t = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { phone } = useLocalSearchParams();
-  const { signIn, showToast } = useStore();
+  const { signIn, showToast, credentials } = useStore();
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -22,8 +24,14 @@ export default function OtpScreen() {
     setError(null);
     setBusy(true);
     try {
-      const session = await verifyOtp({ phone: String(phone), code, name });
-      signIn(session);
+      const session = await verifyOtp({ credentials, phone: String(phone), code });
+      // The name input is captured locally for display only. POST /user is
+      // account registration (not a post-OTP profile update) — wiring that
+      // requires its own screen and pre-OTP flow; deferred.
+      signIn({
+        ...session,
+        user: { ...session.user, name: name?.trim() || session.user?.name || String(phone) },
+      });
       showToast('Signed in');
       router.replace('/(tabs)/me');
     } catch (e) {
@@ -55,8 +63,8 @@ export default function OtpScreen() {
               lineHeight: 20,
             }}
           >
-            Enter the 4-digit code we sent to <Text style={{ color: t.ink }}>{phone}</Text>. In
-            this preview, any 4 digits work.
+            Enter the {OTP_LEN}-digit code we sent to{' '}
+            <Text style={{ color: t.ink }}>{phone}</Text>.
           </Text>
           <Text
             style={{
@@ -72,12 +80,12 @@ export default function OtpScreen() {
           </Text>
           <TextInput
             value={code}
-            onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, 4))}
-            placeholder="• • • •"
+            onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, OTP_LEN))}
+            placeholder="• • • • •"
             placeholderTextColor={t.ink4}
             keyboardType="number-pad"
             autoFocus
-            maxLength={4}
+            maxLength={OTP_LEN}
             style={{
               borderBottomWidth: 1,
               borderBottomColor: error ? t.sale : t.lineStrong,
@@ -122,14 +130,14 @@ export default function OtpScreen() {
           />
         </View>
         <Pressable
-          disabled={busy || code.length !== 4}
+          disabled={busy || code.length !== OTP_LEN}
           onPress={submit}
           style={{
             backgroundColor: t.ink,
             paddingVertical: 16,
             borderRadius: 28,
             alignItems: 'center',
-            opacity: busy || code.length !== 4 ? 0.4 : 1,
+            opacity: busy || code.length !== OTP_LEN ? 0.4 : 1,
           }}
         >
           <Text style={{ color: t.bg, fontFamily: t.fonts.sansSemiBold, fontSize: 14 }}>

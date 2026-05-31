@@ -22,7 +22,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: t.ink,
         tabBarInactiveTintColor: t.ink3,
         tabBarStyle: {
-          backgroundColor: t.bg,
+          backgroundColor: t.surface,
           borderTopColor: t.line,
           borderTopWidth: 1,
           height: 64,

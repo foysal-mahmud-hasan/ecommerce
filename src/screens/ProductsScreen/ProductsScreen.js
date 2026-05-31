@@ -2,11 +2,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CategoryPickerSheet from '../../components/CategoryPickerSheet';
 import Chip from '../../components/Chip';
 import ChipRail from '../../components/ChipRail';
 import { IconSearch, IconSliders, IconX } from '../../components/Icons';
 import MobileHeader from '../../components/MobileHeader';
 import ProductCard from '../../components/ProductCard';
+import Tabs from '../../components/Tabs';
 import ViewToggle from '../../components/ViewToggle';
 import { useStore } from '../../store/StoreContext';
 import { layout, useTheme } from '../../theme';
@@ -29,16 +31,51 @@ export default function ProductsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const bp = useBreakpoint();
-  const { categories, productsCache } = useStore();
+  const {
+    categories,
+    productsCache,
+    tags,
+    loadCategoryProducts,
+    loadTagProducts,
+    categoryStatus,
+  } = useStore();
   const params = useLocalSearchParams();
   const seedQuery = typeof params.q === 'string' ? params.q : '';
+  // Deep-link support: /products?categoryId=<id> scopes the catalog on mount.
+  const seedCategoryId =
+    typeof params.categoryId === 'string' && params.categoryId.length > 0
+      ? params.categoryId
+      : 'all';
 
   const [query, setQuery] = useState(seedQuery);
-  const [activeCategoryId, setActiveCategoryId] = useState('all');
+  const [activeCategoryId, setActiveCategoryId] = useState(seedCategoryId);
   const [sort, setSort] = useState('featured');
   const [page, setPage] = useState(0);
   const [view, setView] = useState(bp === 'mobile' ? 'list' : 'grid');
+  const [pickerOpen, setPickerOpen] = useState(false);
   const debouncedQuery = useDebounced(query, 200);
+
+  const scopedCategoryName = useMemo(() => {
+    if (activeCategoryId === 'all') return null;
+    return (categories || []).find((c) => String(c.id) === String(activeCategoryId))?.name || null;
+  }, [activeCategoryId, categories]);
+
+  // Backend has no "all products" endpoint and no working pagination, so the
+  // "All" view shows the union of whatever's been loaded so far — that means
+  // we need to actively warm a few sources. Strategy: when scoped to a
+  // category, fetch that category. When unscoped, make sure at least one tag
+  // is fetched (bootstrap already warms tags, but if a user opened this
+  // screen before the warm-up completed, we kick again — idempotent).
+  useEffect(() => {
+    if (activeCategoryId !== 'all') {
+      loadCategoryProducts(activeCategoryId);
+    } else if (tags && tags.length > 0) {
+      tags.forEach((tg) => loadTagProducts(tg.id));
+    }
+  }, [activeCategoryId, loadCategoryProducts, loadTagProducts, tags]);
+
+  const loadingScopedCategory =
+    activeCategoryId !== 'all' && categoryStatus?.[activeCategoryId] === 'loading';
 
   // Grid: 2 cols mobile, 3 tablet, 4 desktop. List: always 1 column.
   // (Was 5 cols on desktop — too cramped at the 1280pt cap; 4 matches the
@@ -129,12 +166,20 @@ export default function ProductsScreen() {
     <View style={[styles.container, { backgroundColor: t.bg }]}>
       <MobileHeader title="All products" onBack={() => router.back()} />
       <View style={styles.searchRow}>
-        <View style={[styles.searchBox, { backgroundColor: t.surface, borderColor: t.line }]}>
-          <IconSearch size={16} color={t.ink3} />
+        <View
+          style={[
+            styles.searchBox,
+            {
+              backgroundColor: t.surface,
+              borderColor: scopedCategoryName ? t.terra : t.line,
+            },
+          ]}
+        >
+          <IconSearch size={16} color={scopedCategoryName ? t.terra : t.ink3} />
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search products"
+            placeholder={scopedCategoryName ? `Search in ${scopedCategoryName}` : 'Search products'}
             placeholderTextColor={t.ink3}
             style={[styles.searchInput, { color: t.ink }]}
             returnKeyType="search"
@@ -147,10 +192,17 @@ export default function ProductsScreen() {
           ) : null}
         </View>
         <Pressable
-          style={[styles.iconBtn, { backgroundColor: t.surface, borderColor: t.line }]}
-          accessibilityLabel="Filters"
+          onPress={() => setPickerOpen(true)}
+          style={[
+            styles.iconBtn,
+            {
+              backgroundColor: t.surface,
+              borderColor: scopedCategoryName ? t.terra : t.line,
+            },
+          ]}
+          accessibilityLabel="Scope search to a category"
         >
-          <IconSliders color={t.ink} />
+          <IconSliders color={scopedCategoryName ? t.terra : t.ink} />
         </Pressable>
       </View>
 
@@ -172,13 +224,7 @@ export default function ProductsScreen() {
       </View>
 
       <View style={styles.sortRail}>
-        <ChipRail paddingHorizontal={16}>
-          {SORTS.map((s) => (
-            <Chip key={s.id} active={sort === s.id} onPress={() => setSort(s.id)}>
-              {s.label}
-            </Chip>
-          ))}
-        </ChipRail>
+        <Tabs items={SORTS} value={sort} onChange={setSort} contentPadding={16} />
       </View>
 
       <View style={[styles.countRow, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
@@ -210,12 +256,25 @@ export default function ProductsScreen() {
         onEndReachedThreshold={0.5}
         ListFooterComponent={ListFooter}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={[styles.emptyText, { color: t.ink3 }]}>
-              No products match your search.
-            </Text>
-          </View>
+          loadingScopedCategory ? (
+            <View style={styles.empty}>
+              <ActivityIndicator color={t.terra} />
+            </View>
+          ) : (
+            <View style={styles.empty}>
+              <Text style={[styles.emptyText, { color: t.ink3 }]}>
+                No products match your search.
+              </Text>
+            </View>
+          )
         }
+      />
+
+      <CategoryPickerSheet
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        selectedId={activeCategoryId === 'all' ? null : activeCategoryId}
+        onSelect={(id) => setActiveCategoryId(id == null ? 'all' : id)}
       />
     </View>
   );

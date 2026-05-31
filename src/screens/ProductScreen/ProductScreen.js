@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Badge from '../../components/Badge';
 import Footer from '../../components/Footer';
@@ -36,14 +36,43 @@ export default function ProductScreen() {
   const isWide = bp === 'desktop' || bp === 'tablet';
   const { id } = useLocalSearchParams();
   const productId = typeof id === 'string' ? id : '';
-  const { productsCache, wishlist, toggleWishlist, addToCart, currency, openQuickView } = useStore();
+  const {
+    productsCache,
+    wishlist,
+    toggleWishlist,
+    addToCart,
+    currency,
+    openQuickView,
+    loadProductDetail,
+    loadCategoryProducts,
+    detailStatus,
+  } = useStore();
   const product = productsCache?.byId?.[productId];
+
+  // If we don't have this product cached, fetch its detail. Idempotent.
+  useEffect(() => {
+    if (productId && !product) loadProductDetail(productId);
+  }, [productId, product, loadProductDetail]);
+
+  // Once product is loaded, lazy-load its category so related items appear.
+  useEffect(() => {
+    if (product?.categoryId) loadCategoryProducts(product.categoryId);
+  }, [product?.categoryId, loadCategoryProducts]);
 
   const measurements = useMemo(() => {
     const list = Array.isArray(product?.measurements) ? product.measurements : [];
-    const saleable = list.filter((m) => m.is_sales === 1 || m.is_sales === undefined);
+    // Normalized shape has {isSales:boolean}; raw shape used 1/0 — accept both
+    // so this works against either source.
+    const saleable = list.filter((m) => m.isSales !== false && m.is_sales !== 0);
     if (saleable.length > 0) return saleable;
-    return [{ unit_id: 'default', unit_name: product?.unit || 'Unit', quantity: 1, label: `1 ${product?.unit || 'Unit'}` }];
+    return [
+      {
+        unitId: 'default',
+        unitName: product?.unit || 'Unit',
+        quantity: 1,
+        label: `1 ${product?.unit || 'Unit'}`,
+      },
+    ];
   }, [product]);
 
   const [qtyByUnit, setQtyByUnit] = useState({});
@@ -52,7 +81,8 @@ export default function ProductScreen() {
     if (!product) return;
     const seed = {};
     measurements.forEach((m, i) => {
-      seed[m.unit_id ?? `idx-${i}`] = i === 0 ? 1 : 0;
+      const key = m.unitId ?? m.unit_id ?? `idx-${i}`;
+      seed[key] = i === 0 ? 1 : 0;
     });
     setQtyByUnit(seed);
   }, [product, measurements]);
@@ -64,9 +94,19 @@ export default function ProductScreen() {
   }, [product, productsCache]);
 
   if (!product) {
+    const detailLoadState = detailStatus?.[productId] || 'idle';
     return (
-      <View style={[styles.container, { backgroundColor: t.bg, alignItems: 'center', justifyContent: 'center' }]}>
-        <Text style={{ fontFamily: t.fonts.sans, color: t.ink3 }}>Product not found.</Text>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: t.bg, alignItems: 'center', justifyContent: 'center' },
+        ]}
+      >
+        {detailLoadState === 'loading' || detailLoadState === 'idle' ? (
+          <ActivityIndicator color={t.terra} />
+        ) : (
+          <Text style={{ fontFamily: t.fonts.sans, color: t.ink3 }}>Product not found.</Text>
+        )}
       </View>
     );
   }
@@ -75,7 +115,7 @@ export default function ProductScreen() {
   const discount = percentOff(product.price, product.was);
   const totalQty = Object.values(qtyByUnit).reduce((s, v) => s + (v || 0), 0);
   const subtotal = measurements.reduce((s, m, i) => {
-    const key = m.unit_id ?? `idx-${i}`;
+    const key = m.unitId ?? m.unit_id ?? `idx-${i}`;
     const q = qtyByUnit[key] || 0;
     return s + q * (Number(product.price) || 0) * (Number(m.quantity) || 1);
   }, 0);
@@ -86,12 +126,12 @@ export default function ProductScreen() {
       return;
     }
     measurements.forEach((m, i) => {
-      const key = m.unit_id ?? `idx-${i}`;
+      const key = m.unitId ?? m.unit_id ?? `idx-${i}`;
       const q = qtyByUnit[key] || 0;
       if (q > 0) {
         addToCart(product.id, q, {
-          unit: m.unit_name || product.unit,
-          unitId: m.unit_id,
+          unit: m.unitName || m.unit_name || product.unit,
+          unitId: m.unitId ?? m.unit_id,
           price: product.price,
         });
       }
@@ -271,14 +311,16 @@ export default function ProductScreen() {
                 CHOOSE QUANTITY
               </Text>
               {measurements.map((m, i) => {
-                const key = m.unit_id ?? `idx-${i}`;
+                const key = m.unitId ?? m.unit_id ?? `idx-${i}`;
                 const qty = qtyByUnit[key] || 0;
+                const unitName = m.unitName || m.unit_name || product.unit || 'Unit';
                 const lineTotal = qty * (Number(product.price) || 0) * (Number(m.quantity) || 1);
                 const label =
                   m.label ||
-                  (m.unit_name && m.quantity > 1
-                    ? `1 ${m.unit_name} = ${m.quantity} Pcs`
-                    : m.unit_name || `1 ${product.unit || 'Unit'}`);
+                  (unitName && m.quantity > 1
+                    ? `1 ${unitName} = ${m.quantity} Pcs`
+                    : unitName || `1 ${product.unit || 'Unit'}`);
+                const selected = qty > 0;
                 return (
                   <View
                     key={key}
@@ -287,9 +329,23 @@ export default function ProductScreen() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: 10,
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      borderRadius: 10,
+                      borderWidth: selected ? 1.5 : 1,
+                      borderColor: selected ? t.terra : t.line,
+                      backgroundColor: 'transparent',
                     }}
                   >
-                    <Text style={{ fontFamily: t.fonts.sans, fontSize: 13, color: t.ink2, flex: 1 }} numberOfLines={1}>
+                    <Text
+                      style={{
+                        fontFamily: selected ? t.fonts.sansSemiBold : t.fonts.sans,
+                        fontSize: 13,
+                        color: selected ? t.terra : t.ink2,
+                        flex: 1,
+                      }}
+                      numberOfLines={1}
+                    >
                       {label}
                     </Text>
                     <QtyStepper
@@ -302,7 +358,7 @@ export default function ProductScreen() {
                       style={{
                         fontFamily: t.fonts.sansSemiBold,
                         fontSize: 13,
-                        color: qty > 0 ? t.terra : t.ink3,
+                        color: selected ? t.terra : t.ink3,
                         minWidth: 60,
                         textAlign: 'right',
                       }}
@@ -385,7 +441,10 @@ export default function ProductScreen() {
                   product={r}
                   width={150}
                   onPress={() => {
-                    if (Array.isArray(r.measurements) && r.measurements.filter((m) => m.is_sales === 1 || m.is_sales === undefined).length > 1) {
+                    const saleable = Array.isArray(r.measurements)
+                      ? r.measurements.filter((m) => m.isSales !== false && m.is_sales !== 0)
+                      : [];
+                    if (saleable.length > 1) {
                       openQuickView(r.id);
                     } else {
                       router.push(`/product/${r.id}`);

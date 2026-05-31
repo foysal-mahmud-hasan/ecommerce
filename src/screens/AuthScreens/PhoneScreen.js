@@ -11,7 +11,7 @@ export default function PhoneScreen() {
   const t = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { showToast } = useStore();
+  const { showToast, credentials } = useStore();
   const [phone, setPhone] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -20,7 +20,7 @@ export default function PhoneScreen() {
     setError(null);
     setBusy(true);
     try {
-      await requestOtp({ phone });
+      await requestOtp({ credentials, phone });
       router.push({ pathname: '/(auth)/otp', params: { phone } });
     } catch (e) {
       setError(e.message);
@@ -52,7 +52,7 @@ export default function PhoneScreen() {
               lineHeight: 20,
             }}
           >
-            We'll send a 4-digit code to verify it's you. Standard SMS rates apply.
+            We'll send a 5-digit code to verify it's you. Standard SMS rates apply.
           </Text>
           <Text
             style={{

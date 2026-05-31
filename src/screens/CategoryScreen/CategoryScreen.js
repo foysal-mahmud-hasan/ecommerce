@@ -1,6 +1,14 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Chip from '../../components/Chip';
 import { IconSliders } from '../../components/Icons';
@@ -26,7 +34,13 @@ export default function CategoryScreen() {
   const { id } = useLocalSearchParams();
   const cat = typeof id === 'string' ? id : '';
   const [sort, setSort] = useState('featured');
-  const { categories, productsCache, openQuickView } = useStore();
+  const {
+    categories,
+    productsCache,
+    openQuickView,
+    loadCategoryProducts,
+    categoryStatus,
+  } = useStore();
   const bp = useBreakpoint();
   const { width: winW } = useWindowDimensions();
   const cols = bp === 'desktop' ? 4 : bp === 'tablet' ? 3 : 2;
@@ -37,6 +51,15 @@ export default function CategoryScreen() {
     : (nativeContainerW - gridGap * (cols - 1)) / cols;
 
   const catName = (categories || []).find((c) => String(c.id) === cat)?.name || 'All';
+
+  // Lazy-load this category's products the first time the screen mounts (or
+  // when the `id` param changes). Idempotent — store thunk no-ops if already
+  // ready or in flight.
+  useEffect(() => {
+    if (cat) loadCategoryProducts(cat);
+  }, [cat, loadCategoryProducts]);
+
+  const loadState = categoryStatus?.[cat] || 'idle';
 
   const products = useMemo(() => {
     let list = productsCache?.byCategoryId?.[cat] || [];
@@ -79,6 +102,23 @@ export default function CategoryScreen() {
         <Text style={[styles.count, { color: t.ink3 }]}>
           {products.length} item{products.length !== 1 ? 's' : ''} · {catName.toLowerCase()}
         </Text>
+        {loadState === 'loading' && products.length === 0 ? (
+          <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+            <ActivityIndicator color={t.terra} />
+          </View>
+        ) : null}
+        {loadState === 'error' && products.length === 0 ? (
+          <Text
+            style={{
+              color: t.ink3,
+              textAlign: 'center',
+              paddingVertical: 24,
+              fontFamily: t.fonts.sans,
+            }}
+          >
+            Couldn’t load this category. Pull down to retry.
+          </Text>
+        ) : null}
         <View style={[styles.grid, { gap: gridGap }]}>
           {products.map((p) => (
             <View

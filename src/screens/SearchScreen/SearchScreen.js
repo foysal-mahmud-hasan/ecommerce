@@ -20,7 +20,12 @@ export default function SearchScreen() {
   const params = useLocalSearchParams();
   const { categories, productsCache, openQuickView, setSearchQuery } = useStore();
   const [q, setQ] = useState(typeof params.q === 'string' ? params.q : '');
-  const [activeCat, setActiveCat] = useState(null);
+  // Seed scope from `categoryId` param so the home filter icon can deep-link.
+  const initialCat =
+    typeof params.categoryId === 'string' && params.categoryId.length > 0
+      ? params.categoryId
+      : null;
+  const [activeCat, setActiveCat] = useState(initialCat);
 
   useEffect(() => setSearchQuery(q), [q, setSearchQuery]);
 
@@ -67,12 +72,21 @@ export default function SearchScreen() {
                 style={[
                   styles.catChip,
                   {
-                    backgroundColor: active ? t.ink : t.surface,
-                    borderColor: active ? t.ink : t.line,
+                    backgroundColor: 'transparent',
+                    borderColor: active ? t.terra : t.line,
+                    borderWidth: active ? 1.5 : 1,
                   },
                 ]}
               >
-                <Text style={[styles.catChipText, { color: active ? t.bg : t.ink2 }]}>
+                <Text
+                  style={[
+                    styles.catChipText,
+                    {
+                      color: active ? t.terra : t.ink2,
+                      fontFamily: active ? t.fonts.sansSemiBold : t.fonts.sansMedium,
+                    },
+                  ]}
+                >
                   {c.label}
                 </Text>
               </Pressable>

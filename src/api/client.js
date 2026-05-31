@@ -21,6 +21,12 @@ export class ApiError extends Error {
 function rewriteForWeb(url) {
   if (Platform.OS !== 'web' || typeof url !== 'string') return url;
   if (!/^https?:\/\//i.test(url)) return url;
+  // Production web bundles must hit the backend directly — the Metro dev
+  // middleware that answers /api-proxy/<encoded-url> doesn't exist in prod
+  // (Forge serves a static export). For prod to work the backend must send
+  // CORS headers for the live origin. The proxy stays for dev only because
+  // the dev backend doesn't allowlist localhost.
+  if (!__DEV__) return url;
   // Same-origin URLs (already pointing at the dev server) need no rewriting.
   if (typeof window !== 'undefined' && url.startsWith(window.location.origin)) return url;
   return `/api-proxy/${encodeURIComponent(url)}`;
@@ -41,16 +47,21 @@ export async function request(url, options = {}) {
     else signal.addEventListener('abort', onCallerAbort);
   }
 
+  // FormData bodies must pass through untouched so the fetch implementation
+  // can set the multipart boundary on Content-Type itself. Setting Content-Type
+  // explicitly (or stringifying) breaks the multipart parser on the server.
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+
   let res;
   try {
     res = await fetch(finalUrl, {
       method,
       headers: {
         Accept: 'application/json',
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
+        ...(body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
         ...headers,
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body: isFormData ? body : body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     });
   } catch (err) {

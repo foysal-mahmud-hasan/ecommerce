@@ -14,6 +14,9 @@ export const styles = StyleSheet.create({
       ? { boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }
       : null),
   },
+  // Full-width bar content with comfortable side gutters. Logo pins left,
+  // cart/profile pin right, search fills the middle — like a real storefront
+  // header. Shares contentMaxWidth so the bar's edges align with page content.
   inner: {
     width: '100%',
     maxWidth: layout.contentMaxWidth,
@@ -21,8 +24,8 @@ export const styles = StyleSheet.create({
     height: layout.topNavHeight,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    gap: 24,
+    paddingHorizontal: 32,
+    gap: 28,
   },
   navLinks: {
     flexDirection: 'row',
@@ -30,9 +33,10 @@ export const styles = StyleSheet.create({
     gap: 4,
   },
   navLink: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.sm,
+    paddingHorizontal: 10,
+    height: layout.topNavHeight,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -41,11 +45,11 @@ export const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     letterSpacing: 0.2,
   },
-  // Search input grows to fill the middle of the bar.
+  // Search input grows to fill the middle of the bar and pushes the actions
+  // to the far right (no dead space after the profile icon).
   searchWrap: {
     flex: 1,
-    minWidth: 120,
-    maxWidth: 420,
+    minWidth: 200,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,

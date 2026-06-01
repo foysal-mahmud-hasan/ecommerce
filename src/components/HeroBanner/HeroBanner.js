@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FlatList, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { bannersFor } from '../../data/banners';
 import { useStore } from '../../store/StoreContext';
-import { useTheme } from '../../theme';
+import { layout, useTheme } from '../../theme';
 import { useBreakpoint } from '../../utils/responsive';
 import { styles } from './HeroBanner.styles';
 
@@ -27,8 +27,10 @@ export default function HeroBanner({ tenant: tenantOverride }) {
   const bp = useBreakpoint();
   const aspect = aspectFor(bp);
   const { width: screenW } = useWindowDimensions();
-  // The app caps at 1280pt centered on web — use min(screen, 1280) for layout.
-  const containerWidth = Math.min(screenW, 1280);
+  // The app caps content at layout.contentMaxWidth centered on web; size the
+  // slide to that exact width so the carousel snaps to one banner (no peek of
+  // the next slide). Must track the shared token or the hero "chops".
+  const containerWidth = Math.min(screenW, layout.contentMaxWidth);
   // 20pt horizontal padding from styles.wrap.
   const cardWidth = Math.max(280, containerWidth - 40);
   const cardHeight = cardWidth / aspect;

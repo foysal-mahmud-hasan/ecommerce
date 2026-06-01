@@ -5,7 +5,9 @@ export const layout = {
   // on web ≥768; mobile/native uses the bottom tab bar instead.
   topNavHeight: 64,
   // Max content width for the centered desktop shell + page containers.
-  contentMaxWidth: 1280,
+  // The top nav and all page content share this so their left/right edges
+  // line up in one consistent column (no nav-wider-than-content mismatch).
+  contentMaxWidth: 1536,
   hitSlop: { top: 8, right: 8, bottom: 8, left: 8 },
 };
 

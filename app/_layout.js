@@ -32,7 +32,7 @@ import CartFab from '../src/components/CartFab';
 import PrescriptionSheet from '../src/components/PrescriptionSheet';
 import { StoreProvider } from '../src/store/StoreContext';
 import BootstrapProvider from '../src/bootstrap/BootstrapProvider';
-import { useTheme } from '../src/theme';
+import { layout, useTheme } from '../src/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -58,7 +58,7 @@ function ThemedShell() {
       ]}
     >
       {showTopNav ? <DesktopTopNav /> : null}
-      <View style={[{ flex: 1, width: '100%' }, isWeb && { maxWidth: 1280 }]}>
+      <View style={[{ flex: 1, width: '100%' }, isWeb && { maxWidth: layout.contentMaxWidth }]}>
         <StatusBar style="dark" />
         <Stack
           screenOptions={{

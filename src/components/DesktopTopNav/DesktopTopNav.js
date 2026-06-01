@@ -57,7 +57,7 @@ export default function DesktopTopNav() {
                 hitSlop={layout.hitSlop}
                 style={[
                   styles.navLink,
-                  active && { borderWidth: 1, borderColor: t.terra },
+                  active && { borderBottomColor: t.terra },
                 ]}
                 accessibilityRole="link"
                 accessibilityState={{ selected: active }}

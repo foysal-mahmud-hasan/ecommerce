@@ -9,12 +9,14 @@ import RemoteImage from '../../components/RemoteImage';
 import { fragCartCount, fragCartTotal, useStore } from '../../store/StoreContext';
 import { layout, useTheme } from '../../theme';
 import { formatPrice } from '../../utils/format';
+import { useIsWebWide } from '../../utils/responsive';
 import { styles } from './CartScreen.styles';
 
 export default function CartScreen() {
   const t = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const webWide = useIsWebWide();
   const { cart, updateQty, removeFromCart, productsCache, currency, openQuickView } = useStore();
   const productMap = productsCache?.byId || {};
   const total = fragCartTotal(cart, productMap);
@@ -46,10 +48,12 @@ export default function CartScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
-          { paddingBottom: insets.bottom + layout.buyBarHeight + 24 },
+          { paddingBottom: webWide ? 48 : insets.bottom + layout.buyBarHeight + 24 },
         ]}
         showsVerticalScrollIndicator={false}
       >
+        <View style={webWide ? { flexDirection: 'row', alignItems: 'flex-start', gap: 32 } : null}>
+        <View style={webWide ? { flex: 1, minWidth: 0 } : null}>
         <Text style={[styles.count, { color: t.ink3 }]}>
           {count} item{count !== 1 ? 's' : ''}
         </Text>
@@ -113,7 +117,9 @@ export default function CartScreen() {
             );
           })}
         </View>
+        </View>
 
+        <View style={webWide ? { width: 360 } : null}>
         <View style={[styles.totalsCard, { backgroundColor: t.surfaceAlt }]}>
           <View style={styles.totalRow}>
             <Text style={[styles.totalLabel, { color: t.ink2 }]}>Subtotal</Text>
@@ -132,28 +138,39 @@ export default function CartScreen() {
               {formatPrice(grand, currency)}
             </Text>
           </View>
+          {webWide ? (
+            <View style={{ marginTop: 16 }}>
+              <FragButton variant="primary" size="lg" full onPress={() => router.push('/checkout')}>
+                {`Checkout · ${formatPrice(grand, currency)}`}
+              </FragButton>
+            </View>
+          ) : null}
+        </View>
+        </View>
         </View>
       </ScrollView>
 
-      <View
-        style={[
-          styles.bottomBar,
-          {
-            backgroundColor: t.bg,
-            borderTopColor: t.line,
-            paddingBottom: 12 + insets.bottom,
-          },
-        ]}
-      >
-        <FragButton
-          variant="primary"
-          size="lg"
-          full
-          onPress={() => router.push('/checkout')}
+      {webWide ? null : (
+        <View
+          style={[
+            styles.bottomBar,
+            {
+              backgroundColor: t.bg,
+              borderTopColor: t.line,
+              paddingBottom: 12 + insets.bottom,
+            },
+          ]}
         >
-          {`Checkout · ${formatPrice(grand, currency)}`}
-        </FragButton>
-      </View>
+          <FragButton
+            variant="primary"
+            size="lg"
+            full
+            onPress={() => router.push('/checkout')}
+          >
+            {`Checkout · ${formatPrice(grand, currency)}`}
+          </FragButton>
+        </View>
+      )}
     </View>
   );
 }

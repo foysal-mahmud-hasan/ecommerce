@@ -13,6 +13,7 @@ import { gatewaysForCurrency } from '../../config/payments';
 import { fragCartCount, fragCartTotal, useStore } from '../../store/StoreContext';
 import { layout, useTheme } from '../../theme';
 import { formatPrice } from '../../utils/format';
+import { useIsWebWide } from '../../utils/responsive';
 import { styles } from './CheckoutScreen.styles';
 
 const STEPS = ['Address', 'Payment'];
@@ -21,6 +22,7 @@ export default function CheckoutScreen() {
   const t = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const webWide = useIsWebWide();
   const {
     cart,
     clearCart,
@@ -188,10 +190,12 @@ export default function CheckoutScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
-          { paddingBottom: insets.bottom + layout.buyBarHeight + 24 },
+          { paddingBottom: webWide ? 48 : insets.bottom + layout.buyBarHeight + 24 },
         ]}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={webWide ? { flexDirection: 'row', alignItems: 'flex-start', gap: 32 } : null}>
+        <View style={webWide ? { flex: 1, minWidth: 0 } : null}>
         <View style={styles.stepper}>
           {STEPS.map((label, i) => {
             const active = i <= step;
@@ -213,7 +217,9 @@ export default function CheckoutScreen() {
           errors={errors}
           paymentOptions={paymentOptions}
         />
+        </View>
 
+        <View style={webWide ? { width: 360 } : null}>
         <View style={[styles.summary, { backgroundColor: t.surfaceAlt }]}>
           <Text style={[styles.summaryEyebrow, { color: t.ink3 }]}>
             ORDER · {count} ITEM{count !== 1 ? 'S' : ''}
@@ -243,18 +249,29 @@ export default function CheckoutScreen() {
             </Text>
           </View>
         </View>
+        {webWide ? (
+          <View style={{ marginTop: 16 }}>
+            <FragButton variant="primary" size="lg" full onPress={next} disabled={busy}>
+              {busy ? 'Processing…' : step < 1 ? 'Continue' : `Place order · ${formatPrice(grand, currency)}`}
+            </FragButton>
+          </View>
+        ) : null}
+        </View>
+        </View>
       </ScrollView>
 
-      <View
-        style={[
-          styles.bottomBar,
-          { backgroundColor: t.bg, borderTopColor: t.line, paddingBottom: 12 + insets.bottom },
-        ]}
-      >
-        <FragButton variant="primary" size="lg" full onPress={next} disabled={busy}>
-          {busy ? 'Processing…' : step < 1 ? 'Continue' : `Place order · ${formatPrice(grand, currency)}`}
-        </FragButton>
-      </View>
+      {webWide ? null : (
+        <View
+          style={[
+            styles.bottomBar,
+            { backgroundColor: t.bg, borderTopColor: t.line, paddingBottom: 12 + insets.bottom },
+          ]}
+        >
+          <FragButton variant="primary" size="lg" full onPress={next} disabled={busy}>
+            {busy ? 'Processing…' : step < 1 ? 'Continue' : `Place order · ${formatPrice(grand, currency)}`}
+          </FragButton>
+        </View>
+      )}
 
       <StripeCardSheet
         open={stripeOpen}

@@ -18,7 +18,7 @@ import SectionHead from '../../components/SectionHead';
 import { useStore } from '../../store/StoreContext';
 import { layout, useTheme } from '../../theme';
 import { formatPrice, percentOff } from '../../utils/format';
-import { useBreakpoint } from '../../utils/responsive';
+import { useBreakpoint, useIsWebWide } from '../../utils/responsive';
 import { sortInStockFirst } from '../../utils/sortStock';
 import { styles } from './ProductScreen.styles';
 
@@ -34,6 +34,7 @@ export default function ProductScreen() {
   const insets = useSafeAreaInsets();
   const bp = useBreakpoint();
   const isWide = bp === 'desktop' || bp === 'tablet';
+  const webWide = useIsWebWide();
   const { id } = useLocalSearchParams();
   const productId = typeof id === 'string' ? id : '';
   const {
@@ -149,34 +150,43 @@ export default function ProductScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + layout.buyBarHeight + 24 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top bar inside scroll so it scrolls away on mobile */}
+        {/* Top bar inside scroll so it scrolls away on mobile. On desktop the
+            global top nav handles navigation, so the back button is hidden and
+            only the wishlist toggle remains (right-aligned). */}
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
             paddingHorizontal: 16,
-            paddingTop: insets.top + 8,
+            paddingTop: webWide ? 16 : insets.top + 8,
             paddingBottom: 8,
+            maxWidth: webWide ? 1120 : undefined,
+            alignSelf: webWide ? 'center' : undefined,
+            width: '100%',
           }}
         >
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={layout.hitSlop}
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 19,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: t.surface,
-              borderWidth: 1,
-              borderColor: t.line,
-            }}
-            accessibilityLabel="Back"
-          >
-            <IconChevL color={t.ink} size={16} />
-          </Pressable>
+          {webWide ? (
+            <View />
+          ) : (
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={layout.hitSlop}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: t.surface,
+                borderWidth: 1,
+                borderColor: t.line,
+              }}
+              accessibilityLabel="Back"
+            >
+              <IconChevL color={t.ink} size={16} />
+            </Pressable>
+          )}
           <Pressable
             onPress={() => toggleWishlist(product.id)}
             hitSlop={layout.hitSlop}
@@ -203,6 +213,9 @@ export default function ProductScreen() {
             gap: isWide ? 32 : 16,
             paddingHorizontal: 16,
             alignItems: 'flex-start',
+            maxWidth: webWide ? 1120 : undefined,
+            alignSelf: webWide ? 'center' : undefined,
+            width: '100%',
           }}
         >
           {/* IMAGE */}
@@ -388,6 +401,46 @@ export default function ProductScreen() {
               ) : null}
             </View>
 
+            {/* Inline CTAs on desktop (the sticky bottom buy bar is mobile-only) */}
+            {webWide ? (
+              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 18 }}>
+                <Pressable
+                  onPress={handleAdd}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    height: 50,
+                    borderRadius: 25,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1.5,
+                    borderColor: t.terra,
+                    backgroundColor: 'transparent',
+                    opacity: pressed ? 0.85 : 1,
+                  })}
+                >
+                  <Text style={{ fontFamily: t.fonts.sansSemiBold, fontSize: 15, color: t.terra }}>
+                    Add to Cart
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleBuy}
+                  style={({ pressed }) => ({
+                    flex: 1.4,
+                    height: 50,
+                    borderRadius: 25,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: t.terra,
+                    opacity: pressed ? 0.85 : 1,
+                  })}
+                >
+                  <Text style={{ fontFamily: t.fonts.sansSemiBold, fontSize: 15, color: '#FFFFFF' }}>
+                    Buy now · {formatPrice(subtotal > 0 ? subtotal : product.price, currency)}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+
             {/* Delivery callout (matches design language) */}
             <View
               style={{
@@ -459,7 +512,8 @@ export default function ProductScreen() {
         <Footer />
       </ScrollView>
 
-      {/* Sticky buy bar */}
+      {/* Sticky buy bar — mobile only; desktop uses the inline CTAs above */}
+      {webWide ? null : (
       <View
         style={{
           position: 'absolute',
@@ -511,6 +565,7 @@ export default function ProductScreen() {
           </Text>
         </Pressable>
       </View>
+      )}
     </View>
   );
 }

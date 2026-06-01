@@ -4,23 +4,45 @@ import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../store/StoreContext';
 import { useTheme } from '../../theme';
+import { useIsWebWide } from '../../utils/responsive';
 
 export default function WelcomeScreen() {
   const t = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const webWide = useIsWebWide();
   const { tenant } = useStore();
   return (
     <View
-      style={{
-        flex: 1,
-        backgroundColor: t.bg,
-        paddingTop: insets.top + 40,
-        paddingBottom: insets.bottom + 32,
-        paddingHorizontal: 28,
-        justifyContent: 'space-between',
-      }}
+      style={
+        webWide
+          ? { flex: 1, backgroundColor: t.bg, alignItems: 'center', justifyContent: 'center', padding: 40 }
+          : {
+              flex: 1,
+              backgroundColor: t.bg,
+              paddingTop: insets.top + 40,
+              paddingBottom: insets.bottom + 32,
+              paddingHorizontal: 28,
+              justifyContent: 'space-between',
+            }
+      }
     >
+      <View
+        style={
+          webWide
+            ? {
+                width: '100%',
+                maxWidth: 460,
+                backgroundColor: t.surface,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: t.line,
+                padding: 40,
+                gap: 28,
+              }
+            : { flex: 1, justifyContent: 'space-between' }
+        }
+      >
       <View>
         <Text
           style={{
@@ -69,6 +91,7 @@ export default function WelcomeScreen() {
             Maybe later
           </Text>
         </Pressable>
+      </View>
       </View>
     </View>
   );

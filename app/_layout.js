@@ -15,13 +15,15 @@ import {
 } from '@expo-google-fonts/playfair-display';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import DesktopTopNav from '../src/components/DesktopTopNav';
+import { useIsWebWide } from '../src/utils/responsive';
 import StripeProvider from '../src/components/StripeProvider';
 import Toast from '../src/components/Toast';
 import QuickViewSheet from '../src/components/QuickViewSheet';
@@ -34,6 +36,9 @@ import { useTheme } from '../src/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+// Routes where the desktop top nav should NOT appear (auth flow + modal).
+const TOP_NAV_HIDDEN_PREFIXES = ['/welcome', '/phone', '/otp', '/tenant-switch'];
+
 function ThemedShell() {
   const t = useTheme();
   // On web, cap the absolute maximum width so the app doesn't stretch on huge
@@ -41,6 +46,10 @@ function ThemedShell() {
   // phone-shape (480pt) for most screens; ProductsScreen and PDP take the
   // full width of this wrapper for their wide layouts.
   const isWeb = Platform.OS === 'web';
+  const webWide = useIsWebWide();
+  const pathname = usePathname() || '/';
+  const showTopNav =
+    webWide && !TOP_NAV_HIDDEN_PREFIXES.some((p) => pathname.startsWith(p));
   return (
     <View
       style={[
@@ -48,6 +57,7 @@ function ThemedShell() {
         isWeb && { alignItems: 'center' },
       ]}
     >
+      {showTopNav ? <DesktopTopNav /> : null}
       <View style={[{ flex: 1, width: '100%' }, isWeb && { maxWidth: 1280 }]}>
         <StatusBar style="dark" />
         <Stack

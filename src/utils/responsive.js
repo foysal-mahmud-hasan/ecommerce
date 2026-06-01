@@ -34,6 +34,14 @@ export function useIsWeb() {
   return Platform.OS === 'web';
 }
 
+// True when we should render the "web desktop" UX (top nav, multi-column page
+// layouts): web platform AND width ≥ 768 (tablet + desktop). Mobile width or
+// any native platform returns false and keeps the bottom-tab mobile layout.
+export function useIsWebWide() {
+  const { width } = useWindowDimensions();
+  return Platform.OS === 'web' && width >= 768;
+}
+
 // Width to use for layout. On web, caps at 480pt so screens render in a
 // phone-shaped column. Per-screen `maxWidth` override widens this.
 export function useResponsiveWidth(maxWidth = 480) {
@@ -57,6 +65,36 @@ export function ResponsiveScreen({ children, maxWidth = 480, style }) {
       ]}
     >
       <View style={{ flex: 1, width: '100%', maxWidth, alignSelf: 'center' }}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+// Centers page content at a desktop max-width with horizontal gutters on web
+// ≥768; passes through full-width on mobile/native. Unlike ResponsiveScreen
+// (phone-shaped 480 default), this is the wide desktop page container that
+// catalog/detail/home sections adopt so content stops stretching edge-to-edge.
+//
+//   maxWidth  — content cap on web wide (default 1280)
+//   gutter    — horizontal padding applied only on web wide (default 24)
+export function ContentContainer({ children, maxWidth = 1280, gutter = 24, style }) {
+  const { width } = useWindowDimensions();
+  const isWebWide = Platform.OS === 'web' && width >= 768;
+  if (!isWebWide) {
+    return <View style={[{ flex: 1 }, style]}>{children}</View>;
+  }
+  return (
+    <View style={[{ flex: 1, alignItems: 'center' }, style]}>
+      <View
+        style={{
+          flex: 1,
+          width: '100%',
+          maxWidth,
+          alignSelf: 'center',
+          paddingHorizontal: gutter,
+        }}
+      >
         {children}
       </View>
     </View>

@@ -9,11 +9,15 @@ import {
 } from '../../src/components/Icons';
 import { fragCartCount, useStore } from '../../src/store/StoreContext';
 import { fonts, useTheme } from '../../src/theme';
+import { useIsWebWide } from '../../src/utils/responsive';
 
 export default function TabsLayout() {
   const t = useTheme();
   const { cart } = useStore();
   const cartCount = fragCartCount(cart);
+  // On web ≥768 the DesktopTopNav (mounted in the shell) replaces the bottom
+  // tab bar, so hide it there. Mobile width / native keeps the bottom bar.
+  const webWide = useIsWebWide();
 
   return (
     <Tabs
@@ -28,6 +32,7 @@ export default function TabsLayout() {
           height: 64,
           paddingTop: 6,
           paddingBottom: 8,
+          ...(webWide ? { display: 'none' } : null),
         },
         tabBarLabelStyle: {
           fontFamily: fonts.sansMedium,

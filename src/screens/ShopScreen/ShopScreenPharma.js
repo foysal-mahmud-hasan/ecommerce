@@ -22,7 +22,7 @@ import SectionHead from '../../components/SectionHead';
 import ViewToggle from '../../components/ViewToggle';
 import { fragCartCount, useStore } from '../../store/StoreContext';
 import { layout, screenPadding, useTheme } from '../../theme';
-import { useBreakpoint } from '../../utils/responsive';
+import { useBreakpoint, useIsWebWide } from '../../utils/responsive';
 import { sortInStockFirst } from '../../utils/sortStock';
 import HomeSearchBar from './HomeSearchBar';
 import { styles } from './ShopScreen.styles';
@@ -37,6 +37,9 @@ export default function ShopScreenPharma() {
   const insets = useSafeAreaInsets();
   const bp = useBreakpoint();
   const isWide = bp === 'desktop' || bp === 'tablet';
+  // On web ≥768 the global DesktopTopNav supplies logo + search + cart, so the
+  // in-screen sticky header is hidden to avoid a duplicate header row.
+  const webWide = useIsWebWide();
   const cardCols = bp === 'desktop' ? 4 : bp === 'tablet' ? 3 : 2;
   const { width: winW } = useWindowDimensions();
   // Native: gap is in px and flexBasis: '50%' + gap overflows the row, so we
@@ -192,56 +195,59 @@ export default function ShopScreenPharma() {
   return (
     <View style={[styles.container, { backgroundColor: t.bg }]}>
       {/* Sticky header — sits above the scroll content so it stays put while
-          the body scrolls. Mirrors the bottom tab bar's behavior. */}
-      <View
-        style={[
-          styles.stickyHeader,
-          {
-            backgroundColor: t.bg,
-            borderBottomColor: t.line,
-            paddingTop: insets.top + 8,
-          },
-        ]}
-      >
-        <View style={styles.topBar}>
-          <Logo />
-          <View style={styles.topActions}>
-            <Pressable
-              onPress={() => router.push('/orders')}
-              hitSlop={layout.hitSlop}
-              style={[
-                styles.ordersBtn,
-                { backgroundColor: t.surface, borderColor: t.line },
-              ]}
-              accessibilityLabel="My Orders"
-            >
-              <IconBag color={t.ink} size={14} />
-              <Text style={[styles.ordersText, { color: t.ink, fontFamily: t.fonts.sansMedium }]}>
-                My Orders
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push('/(tabs)/cart')}
-              hitSlop={layout.hitSlop}
-              style={[styles.topIconBtn, { backgroundColor: t.surface, borderColor: t.line }]}
-              accessibilityLabel="Cart"
-            >
-              <IconBag color={t.ink} />
-              {cartCount > 0 ? (
-                <View style={[styles.topBadge, { backgroundColor: t.terra }]}>
-                  <Text style={styles.topBadgeText}>{cartCount}</Text>
-                </View>
-              ) : null}
-            </Pressable>
+          the body scrolls. Mirrors the bottom tab bar's behavior. Hidden on
+          web ≥768 where the global DesktopTopNav provides logo/search/cart. */}
+      {webWide ? null : (
+        <View
+          style={[
+            styles.stickyHeader,
+            {
+              backgroundColor: t.bg,
+              borderBottomColor: t.line,
+              paddingTop: insets.top + 8,
+            },
+          ]}
+        >
+          <View style={styles.topBar}>
+            <Logo />
+            <View style={styles.topActions}>
+              <Pressable
+                onPress={() => router.push('/orders')}
+                hitSlop={layout.hitSlop}
+                style={[
+                  styles.ordersBtn,
+                  { backgroundColor: t.surface, borderColor: t.line },
+                ]}
+                accessibilityLabel="My Orders"
+              >
+                <IconBag color={t.ink} size={14} />
+                <Text style={[styles.ordersText, { color: t.ink, fontFamily: t.fonts.sansMedium }]}>
+                  My Orders
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push('/(tabs)/cart')}
+                hitSlop={layout.hitSlop}
+                style={[styles.topIconBtn, { backgroundColor: t.surface, borderColor: t.line }]}
+                accessibilityLabel="Cart"
+              >
+                <IconBag color={t.ink} />
+                {cartCount > 0 ? (
+                  <View style={[styles.topBadge, { backgroundColor: t.terra }]}>
+                    <Text style={styles.topBadgeText}>{cartCount}</Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            </View>
           </View>
-        </View>
 
-        <HomeSearchBar
-          query={query}
-          onQueryChange={setQuery}
-          placeholder="Search medicines, health products..."
-        />
-      </View>
+          <HomeSearchBar
+            query={query}
+            onQueryChange={setQuery}
+            placeholder="Search medicines, health products..."
+          />
+        </View>
+      )}
 
       <ScrollView
         style={{ flex: 1 }}

@@ -17,7 +17,26 @@ export const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.34)',
+    backgroundColor: 'rgba(0,0,0,0.22)',
+  },
+  // Layered bottom scrim (poor-man's gradient, no dependency): two stacked
+  // bands darken the lower portion where the headline/CTA sit so white text
+  // stays legible over busy photos.
+  scrimMid: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '70%',
+    backgroundColor: 'rgba(0,0,0,0.30)',
+  },
+  scrimBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '45%',
+    backgroundColor: 'rgba(0,0,0,0.42)',
   },
   overlayLight: {
     ...StyleSheet.absoluteFillObject,

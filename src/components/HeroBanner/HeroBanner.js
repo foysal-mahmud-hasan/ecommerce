@@ -62,6 +62,12 @@ export default function HeroBanner({ tenant: tenantOverride }) {
     [activeIndex, banners.length, cardWidth],
   );
 
+  // Scale the headline up on larger viewports — a 22px title is lost in a
+  // ~460px-tall desktop banner.
+  const titleSize = bp === 'desktop' ? 40 : bp === 'tablet' ? 30 : 22;
+  const subSize = bp === 'desktop' ? 16 : bp === 'tablet' ? 14 : 12;
+  const ctaTall = bp === 'desktop' || bp === 'tablet';
+
   const renderItem = useCallback(
     ({ item }) => {
       const isDark = item.tone !== 'light';
@@ -78,16 +84,33 @@ export default function HeroBanner({ tenant: tenantOverride }) {
             cachePolicy="memory-disk"
             recyclingKey={item.id}
           />
-          <View style={isDark ? styles.overlay : styles.overlayLight} />
+          {isDark ? (
+            <>
+              <View style={styles.overlay} pointerEvents="none" />
+              <View style={styles.scrimMid} pointerEvents="none" />
+              <View style={styles.scrimBottom} pointerEvents="none" />
+            </>
+          ) : (
+            <View style={styles.overlayLight} pointerEvents="none" />
+          )}
           <View style={styles.content}>
             <Text style={[styles.eyebrow, { color: isDark ? 'rgba(255,255,255,0.85)' : t.ink3 }]} numberOfLines={1}>
               {item.kind === 'offer' ? 'OFFER' : item.kind === 'top' ? 'TOP PICK' : 'DEAL'}
             </Text>
-            <Text style={[styles.title, { color: fg }]} numberOfLines={2}>
+            <Text
+              style={[styles.title, { color: fg, fontSize: titleSize, lineHeight: Math.round(titleSize * 1.12) }]}
+              numberOfLines={2}
+            >
               {item.title}
             </Text>
             {item.subtitle ? (
-              <Text style={[styles.subtitle, { color: isDark ? 'rgba(255,255,255,0.85)' : t.ink2 }]} numberOfLines={2}>
+              <Text
+                style={[
+                  styles.subtitle,
+                  { color: isDark ? 'rgba(255,255,255,0.9)' : t.ink2, fontSize: subSize, lineHeight: Math.round(subSize * 1.4) },
+                ]}
+                numberOfLines={2}
+              >
                 {item.subtitle}
               </Text>
             ) : null}
@@ -96,18 +119,19 @@ export default function HeroBanner({ tenant: tenantOverride }) {
                 onPress={() => router.push(item.ctaTarget)}
                 style={({ pressed }) => [
                   styles.ctaBtn,
+                  ctaTall && { height: 46, paddingHorizontal: 24 },
                   { backgroundColor: ctaBg, opacity: pressed ? 0.85 : 1 },
                 ]}
                 accessibilityRole="button"
               >
-                <Text style={[styles.ctaText, { color: ctaFg }]}>{item.ctaLabel}</Text>
+                <Text style={[styles.ctaText, ctaTall && { fontSize: 15 }, { color: ctaFg }]}>{item.ctaLabel}</Text>
               </Pressable>
             </View>
           </View>
         </View>
       );
     },
-    [cardWidth, cardHeight, router, t],
+    [cardWidth, cardHeight, router, t, titleSize, subSize, ctaTall],
   );
 
   const getItemLayout = useCallback(

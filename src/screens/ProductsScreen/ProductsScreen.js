@@ -12,7 +12,7 @@ import Tabs from '../../components/Tabs';
 import ViewToggle from '../../components/ViewToggle';
 import { useStore } from '../../store/StoreContext';
 import { layout, useTheme } from '../../theme';
-import { useBreakpoint } from '../../utils/responsive';
+import { useBreakpoint, useIsWebWide } from '../../utils/responsive';
 import { sortInStockFirst } from '../../utils/sortStock';
 import { useDebounced } from '../../utils/useDebounced';
 import { styles } from './ProductsScreen.styles';
@@ -31,6 +31,7 @@ export default function ProductsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const bp = useBreakpoint();
+  const webWide = useIsWebWide();
   const {
     categories,
     productsCache,
@@ -165,6 +166,10 @@ export default function ProductsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: t.bg }]}>
       <MobileHeader title="All products" onBack={() => router.back()} />
+      {/* In-catalog search is hidden on desktop — the global top-nav search
+          covers text search (it routes here with ?q=); category chips below
+          handle scoping. Avoids a second search box under the nav. */}
+      {webWide ? null : (
       <View style={styles.searchRow}>
         <View
           style={[
@@ -205,6 +210,7 @@ export default function ProductsScreen() {
           <IconSliders color={scopedCategoryName ? t.terra : t.ink} />
         </Pressable>
       </View>
+      )}
 
       <View style={styles.categoryRail}>
         <ChipRail paddingHorizontal={16}>

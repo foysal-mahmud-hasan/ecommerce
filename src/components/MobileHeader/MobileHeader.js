@@ -3,6 +3,7 @@ import { Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, layout } from '../../theme';
 import { IconChevL } from '../Icons';
+import { useIsWebWide } from '../../utils/responsive';
 import { styles } from './MobileHeader.styles';
 
 // Navbar elevation rule: header sits on `t.surface` (white) with a 1px
@@ -12,6 +13,30 @@ import { styles } from './MobileHeader.styles';
 export default function MobileHeader({ title, onBack, right, serif = true }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const webWide = useIsWebWide();
+
+  // On web ≥768 the global DesktopTopNav supplies all navigation chrome, so
+  // this renders only a left-aligned page heading (no back arrow, no mobile
+  // surface bar) — avoids the duplicate header row under the top nav.
+  if (webWide) {
+    if (!title && !right) return null;
+    return (
+      <View style={styles.webWrap}>
+        {title ? (
+          <Text
+            style={[styles.webTitle, { color: t.ink, fontFamily: serif ? t.fonts.serif : t.fonts.sansSemiBold }]}
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
+        ) : (
+          <View style={styles.flex1} />
+        )}
+        {right ? <View>{right}</View> : null}
+      </View>
+    );
+  }
+
   return (
     <View
       style={[

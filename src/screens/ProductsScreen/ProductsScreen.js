@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CategoryPickerSheet from '../../components/CategoryPickerSheet';
@@ -35,9 +35,7 @@ export default function ProductsScreen() {
   const {
     categories,
     productsCache,
-    tags,
     loadCategoryProducts,
-    loadTagProducts,
     categoryStatus,
   } = useStore();
   const params = useLocalSearchParams();
@@ -54,6 +52,7 @@ export default function ProductsScreen() {
   const [page, setPage] = useState(0);
   const [view, setView] = useState(bp === 'mobile' ? 'list' : 'grid');
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [warmingAll, setWarmingAll] = useState(false);
   const debouncedQuery = useDebounced(query, 200);
 
   const scopedCategoryName = useMemo(() => {
@@ -61,19 +60,52 @@ export default function ProductsScreen() {
     return (categories || []).find((c) => String(c.id) === String(activeCategoryId))?.name || null;
   }, [activeCategoryId, categories]);
 
-  // Backend has no "all products" endpoint and no working pagination, so the
-  // "All" view shows the union of whatever's been loaded so far — that means
-  // we need to actively warm a few sources. Strategy: when scoped to a
-  // category, fetch that category. When unscoped, make sure at least one tag
-  // is fetched (bootstrap already warms tags, but if a user opened this
-  // screen before the warm-up completed, we kick again — idempotent).
+  // The backend has no "all products" endpoint (and ignores pagination), so the
+  // "All" view can only show the union of companies we've fetched. To stop it
+  // landing empty, we warm EVERY company's products in throttled background
+  // batches — products stream into the grid as each batch resolves. The thunk
+  // is idempotent (skips companies already loaded), so re-entering "All" is
+  // cheap. If a real all-products endpoint arrives, replace this loop with one
+  // call. We hold loadCategoryProducts in a ref so this effect depends only on
+  // the active scope + the company list, not on the thunk's shifting identity
+  // (its deps change on every status update) — otherwise the loop would be
+  // torn down and restarted mid-flight.
+  const loadCatRef = useRef(loadCategoryProducts);
+  useEffect(() => {
+    loadCatRef.current = loadCategoryProducts;
+  }, [loadCategoryProducts]);
+
+  const categoryIdsKey = useMemo(
+    () => (categories || []).map((c) => c.id).join(','),
+    [categories],
+  );
+
   useEffect(() => {
     if (activeCategoryId !== 'all') {
-      loadCategoryProducts(activeCategoryId);
-    } else if (tags && tags.length > 0) {
-      tags.forEach((tg) => loadTagProducts(tg.id));
+      loadCatRef.current(activeCategoryId);
+      return undefined;
     }
-  }, [activeCategoryId, loadCategoryProducts, loadTagProducts, tags]);
+    const ids = (categories || []).map((c) => c.id);
+    if (ids.length === 0) return undefined;
+    let cancelled = false;
+    const BATCH = 6;
+    (async () => {
+      setWarmingAll(true);
+      try {
+        for (let i = 0; i < ids.length; i += BATCH) {
+          if (cancelled) return;
+          await Promise.all(ids.slice(i, i + BATCH).map((id) => loadCatRef.current(id)));
+        }
+      } finally {
+        if (!cancelled) setWarmingAll(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // loadCategoryProducts is intentionally accessed via loadCatRef (see above).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategoryId, categoryIdsKey]);
 
   const loadingScopedCategory =
     activeCategoryId !== 'all' && categoryStatus?.[activeCategoryId] === 'loading';
@@ -265,7 +297,7 @@ export default function ProductsScreen() {
         onEndReachedThreshold={0.5}
         ListFooterComponent={ListFooter}
         ListEmptyComponent={
-          loadingScopedCategory ? (
+          loadingScopedCategory || (activeCategoryId === 'all' && warmingAll) ? (
             <View style={styles.empty}>
               <ActivityIndicator color={t.terra} />
             </View>

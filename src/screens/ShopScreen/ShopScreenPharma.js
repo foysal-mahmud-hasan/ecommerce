@@ -59,8 +59,10 @@ export default function ShopScreenPharma() {
   const cartCount = fragCartCount(cart);
 
   const [query, setQuery] = useState('');
-  const [searchedView, setSearchedView] = useState(isWide ? 'grid' : 'list');
-  const [vitaminView, setVitaminView] = useState(isWide ? 'grid' : 'list');
+  // Per-rail grid/list view, keyed by tag id (rails are dynamic, see below).
+  const [railViews, setRailViews] = useState({});
+  const viewFor = (id) => railViews[id] ?? (isWide ? 'grid' : 'list');
+  const setViewFor = (id, v) => setRailViews((m) => ({ ...m, [id]: v }));
 
   const all = productsCache?.all || [];
 
@@ -73,15 +75,6 @@ export default function ShopScreenPharma() {
       .map((id) => productsCache?.byId?.[id])
       .filter(Boolean);
   };
-
-  // Pick named tags by best-match against the tag name. Falls back to the
-  // first / second tag if no name matches.
-  const pickTag = (regex) => (tags || []).find((t) => regex.test(t.name || ''));
-  const topSellerTag = useMemo(() => pickTag(/seller|popular|top/i) || tags?.[0] || null, [tags]);
-  const vitaminTag = useMemo(
-    () => pickTag(/vitamin|supplement|wellness/i) || tags?.[1] || tags?.[0] || null,
-    [tags],
-  );
 
   const topBrands = useMemo(
     () =>
@@ -130,33 +123,43 @@ export default function ShopScreenPharma() {
   );
 
   const wideCount = bp === 'desktop' ? 8 : bp === 'tablet' ? 6 : 6;
-  // Primary rail comes from the tag the merchant flagged as "Top Seller"
-  // (or whichever tag splash returns first). Bootstrap pre-warms these tags
-  // so by the time the user scrolls here, productsForTag returns objects.
-  const mostSearched = useMemo(() => {
-    const fromTag = sortInStockFirst(productsForTag(topSellerTag?.id), { hideOutOfStock: true }).slice(0, wideCount);
-    if (fromTag.length > 0) return fromTag;
-    // Fallback while warmup is pending — show whatever is already in cache.
-    return sortInStockFirst(all, { hideOutOfStock: true }).slice(0, wideCount);
+
+  // Home rails are driven entirely by the splash tags: one section per distinct
+  // tag_name, showing the products under that name. The backend can return
+  // several tag ids that share a name (e.g. multiple "Top Seller" groups), so
+  // we GROUP by tag_name and union their products (deduped by id). For each tag
+  // we prefer the warmed /tag-products/{id} list (bootstrap pre-fetches every
+  // tag) and fall back to the products that came inline with the splash tag.
+  const rails = useMemo(() => {
+    const byName = new Map(); // tag_name → { title, products: Map<id,product> }
+    for (const tag of tags || []) {
+      const name = tag.name;
+      if (!name) continue;
+      if (!byName.has(name)) byName.set(name, { title: name, products: new Map() });
+      const bucket = byName.get(name);
+      const warmed = productsForTag(tag.id);
+      const source = warmed.length > 0 ? warmed : tag.products || [];
+      for (const p of source) {
+        if (p && p.id) bucket.products.set(p.id, p);
+      }
+    }
+    return Array.from(byName.values())
+      .map((b) => ({
+        id: b.title,
+        title: b.title,
+        products: sortInStockFirst(Array.from(b.products.values()), { hideOutOfStock: true }).slice(
+          0,
+          wideCount,
+        ),
+      }))
+      .filter((rail) => rail.products.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [all, tagProducts, topSellerTag, wideCount]);
+  }, [tags, tagProducts, productsCache, wideCount]);
 
   const onSale = useMemo(
     () => sortInStockFirst(all.filter((p) => p.was), { hideOutOfStock: true }).slice(0, 8),
     [all],
   );
-
-  // Secondary rail uses the next matching tag — wellness/vitamins/supplements
-  // — falling back to the first tag's overflow if the merchant hasn't
-  // flagged a second group.
-  const vitaminProducts = useMemo(() => {
-    const fromTag = sortInStockFirst(productsForTag(vitaminTag?.id), { hideOutOfStock: true }).slice(0, wideCount);
-    if (fromTag.length > 0) return fromTag;
-    return sortInStockFirst([...all].slice(-16).reverse(), { hideOutOfStock: true }).slice(0, wideCount);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [all, tagProducts, vitaminTag, wideCount]);
-
-  const vitaminTitle = vitaminTag?.name || 'Vitamins & Supplements';
 
   const renderRail = (products, view) => {
     if (view === 'grid') {
@@ -308,16 +311,21 @@ export default function ShopScreenPharma() {
         </View>
       </View>
 
-      {/* Most Searched Today */}
-      <View style={styles.section}>
-        <SectionHead
-          title="Most Searched Today"
-          action="View all"
-          onAction={() => router.push('/products')}
-          rightSlot={<ViewToggle value={searchedView} onChange={setSearchedView} />}
-        />
-        {renderRail(mostSearched, searchedView)}
-      </View>
+      {/* Tag-driven rails — one section per splash tag (title = tag_name,
+          products = that tag's products). */}
+      {rails.map((rail) => (
+        <View key={rail.id} style={styles.section}>
+          <SectionHead
+            title={rail.title}
+            action="View all"
+            onAction={() => router.push('/products')}
+            rightSlot={
+              <ViewToggle value={viewFor(rail.id)} onChange={(v) => setViewFor(rail.id, v)} />
+            }
+          />
+          {renderRail(rail.products, viewFor(rail.id))}
+        </View>
+      ))}
 
       {/* Sale rail (kept) */}
       {onSale.length > 0 ? (
@@ -388,17 +396,6 @@ export default function ShopScreenPharma() {
           </View>
         </View>
       ) : null}
-
-      {/* Secondary tag rail */}
-      <View style={styles.section}>
-        <SectionHead
-          title={vitaminTitle}
-          action="View all"
-          onAction={() => router.push('/products')}
-          rightSlot={<ViewToggle value={vitaminView} onChange={setVitaminView} />}
-        />
-        {renderRail(vitaminProducts, vitaminView)}
-      </View>
 
       {/* Web-only footer (replaces the prior "Always read the label..." callout) */}
       <Footer />

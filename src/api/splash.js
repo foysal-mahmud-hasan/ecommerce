@@ -115,7 +115,12 @@ export function normalizeTag(t) {
   return {
     id: String(t.tag_id ?? t.id ?? ''),
     name: t.tag_name || t.name || '',
-    productStubs: Array.isArray(t.products) ? t.products : [],
+    // Normalized products that came inline with the splash tag. The home rails
+    // render these immediately (one rail per tag, titled by tag_name) and
+    // upgrade to the full /tag-products/{id} list once the warm-up resolves.
+    products: (Array.isArray(t.products) ? t.products : [])
+      .map(normalizeProduct)
+      .filter(Boolean),
   };
 }
 

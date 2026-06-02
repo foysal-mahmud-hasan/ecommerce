@@ -301,29 +301,25 @@ export default function QuickViewSheet() {
                 </Text>
                 {product.brand ? (
                   <Text
+                    onPress={() => {
+                      const target = product.cat || product.categoryId;
+                      if (target == null) return;
+                      closeQuickView();
+                      router.push(`/category/${target}`);
+                    }}
+                    accessibilityRole="link"
                     style={{
-                      fontFamily: t.fonts.sans,
+                      fontFamily: t.fonts.sansSemiBold,
                       fontSize: 13,
                       color: t.terra,
-                      marginBottom: 4,
+                      marginBottom: 12,
+                      textDecorationLine: 'underline',
                     }}
                     numberOfLines={2}
                   >
-                    <Text style={{ fontFamily: t.fonts.sansSemiBold }}>Generics: </Text>
                     {product.brand}
                   </Text>
                 ) : null}
-                <Text
-                  style={{
-                    fontFamily: t.fonts.sans,
-                    fontSize: 13,
-                    color: t.ink2,
-                    marginBottom: 12,
-                  }}
-                  numberOfLines={1}
-                >
-                  {product._raw?.manufacturer || 'Drug International Limited'}
-                </Text>
 
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 18 }}>
                   <Text style={{ fontFamily: t.fonts.sans, fontSize: 12, color: t.ink3 }}>

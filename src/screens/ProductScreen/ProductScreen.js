@@ -270,27 +270,23 @@ export default function ProductScreen() {
             </Text>
             {product.brand ? (
               <Text
+                onPress={() => {
+                  const target = product.cat || product.categoryId;
+                  if (target == null) return;
+                  router.push(`/category/${target}`);
+                }}
+                accessibilityRole="link"
                 style={{
-                  fontFamily: t.fonts.sans,
+                  fontFamily: t.fonts.sansSemiBold,
                   fontSize: 13,
                   color: t.terra,
-                  marginBottom: 4,
+                  marginBottom: 14,
+                  textDecorationLine: 'underline',
                 }}
               >
-                <Text style={{ fontFamily: t.fonts.sansSemiBold }}>Generics: </Text>
                 {product.brand}
               </Text>
             ) : null}
-            <Text
-              style={{
-                fontFamily: t.fonts.sans,
-                fontSize: 13,
-                color: t.ink2,
-                marginBottom: 14,
-              }}
-            >
-              {product._raw?.manufacturer || 'Drug International Limited'}
-            </Text>
 
             {/* Price */}
             <View style={{ flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>

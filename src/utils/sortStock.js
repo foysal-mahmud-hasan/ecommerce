@@ -1,25 +1,19 @@
-// Stable partition: in-stock items first, out-of-stock last.
-// Restaurant mock items hardcode stock: 999, so they always pass.
-// Pharma API items use real stock counts. Items missing the field
-// (defensive) are treated as out-of-stock.
-//
-// `hideOutOfStock` drops OOS items entirely instead of sinking them to the
-// end. We hide OOS on every browse surface (category, home rails, related
-// products, catalog browse) and only ever show them — sorted last — when the
-// user is actively searching from the top search bar. See decisions.md.
-export function sortInStockFirst(list, { hideOutOfStock = false } = {}) {
-  if (!Array.isArray(list) || list.length === 0) return list || [];
-  const inStock = [];
-  const outOfStock = [];
-  for (const p of list) {
-    if ((p?.stock ?? 0) > 0) inStock.push(p);
-    else outOfStock.push(p);
-  }
-  return hideOutOfStock ? inStock : inStock.concat(outOfStock);
+// STOCK IS NOT TRACKED. Per product decision (2026-06-02) the store sells
+// every product in any quantity regardless of stock — so these two helpers,
+// which are the single gate every product list and Add-to-Cart button funnels
+// through, are intentionally neutralized:
+//   • sortInStockFirst() returns the list untouched (no hiding, no reordering).
+//   • isInStock() always reports true (no OUT badge, no disabled buttons).
+// The `hideOutOfStock` option is kept in the signature so callers don't change.
+// To re-enable stock handling later, restore the partition/`stock > 0` logic
+// here and every consumer lights back up — the OOS UI is still in place behind
+// these checks. See decisions.md.
+export function sortInStockFirst(list, _opts = {}) {
+  return Array.isArray(list) ? list : [];
 }
 
-export function isInStock(product) {
-  return (product?.stock ?? 0) > 0;
+export function isInStock() {
+  return true;
 }
 
 // True when a product is sold in more than one unit (e.g. Strip + Box). The

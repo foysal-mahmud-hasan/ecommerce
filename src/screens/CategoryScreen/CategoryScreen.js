@@ -10,10 +10,12 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CategoryPickerSheet from '../../components/CategoryPickerSheet';
 import Chip from '../../components/Chip';
 import { IconSliders } from '../../components/Icons';
 import MobileHeader from '../../components/MobileHeader';
 import ProductCard from '../../components/ProductCard';
+import ViewToggle from '../../components/ViewToggle';
 import { useStore } from '../../store/StoreContext';
 import { layout, screenPadding, useTheme } from '../../theme';
 import { useBreakpoint } from '../../utils/responsive';
@@ -34,6 +36,7 @@ export default function CategoryScreen() {
   const { id } = useLocalSearchParams();
   const cat = typeof id === 'string' ? id : '';
   const [sort, setSort] = useState('featured');
+  const [pickerOpen, setPickerOpen] = useState(false);
   const {
     categories,
     productsCache,
@@ -43,7 +46,9 @@ export default function CategoryScreen() {
   } = useStore();
   const bp = useBreakpoint();
   const { width: winW } = useWindowDimensions();
-  const cols = bp === 'desktop' ? 4 : bp === 'tablet' ? 3 : 2;
+  const [view, setView] = useState(bp === 'mobile' ? 'list' : 'grid');
+  // List view is always a single column; grid scales 2→3→4 by breakpoint.
+  const cols = view === 'list' ? 1 : bp === 'desktop' ? 4 : bp === 'tablet' ? 3 : 2;
   const gridGap = 14;
   const nativeContainerW = Math.max(0, winW - screenPadding * 2);
   const cellWidth = Platform.OS === 'web'
@@ -66,7 +71,7 @@ export default function CategoryScreen() {
     if (sort === 'low') list = [...list].sort((a, b) => a.price - b.price);
     else if (sort === 'high') list = [...list].sort((a, b) => b.price - a.price);
     else if (sort === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name));
-    return sortInStockFirst(list);
+    return sortInStockFirst(list, { hideOutOfStock: true });
   }, [productsCache, cat, sort]);
 
   return (
@@ -76,9 +81,10 @@ export default function CategoryScreen() {
         onBack={() => router.back()}
         right={
           <Pressable
+            onPress={() => setPickerOpen(true)}
             hitSlop={layout.hitSlop}
             style={[styles.iconBtn, { backgroundColor: t.surface, borderColor: t.line }]}
-            accessibilityLabel="Filters"
+            accessibilityLabel="Switch category"
           >
             <IconSliders color={t.ink} />
           </Pressable>
@@ -99,9 +105,12 @@ export default function CategoryScreen() {
             </Chip>
           ))}
         </ScrollView>
-        <Text style={[styles.count, { color: t.ink3 }]}>
-          {products.length} item{products.length !== 1 ? 's' : ''} · {catName.toLowerCase()}
-        </Text>
+        <View style={styles.countRow}>
+          <Text style={[styles.count, { color: t.ink3 }]}>
+            {products.length} item{products.length !== 1 ? 's' : ''} · {catName.toLowerCase()}
+          </Text>
+          <ViewToggle value={view} onChange={setView} />
+        </View>
         {loadState === 'loading' && products.length === 0 ? (
           <View style={{ paddingVertical: 32, alignItems: 'center' }}>
             <ActivityIndicator color={t.terra} />
@@ -127,6 +136,8 @@ export default function CategoryScreen() {
             >
               <ProductCard
                 product={p}
+                forceLayout={view === 'list' ? 'clinical' : 'editorial'}
+                compact={view === 'grid'}
                 onPress={() => openQuickView(p.id)}
                 onLongPress={() => router.push(`/product/${p.id}`)}
               />
@@ -134,6 +145,15 @@ export default function CategoryScreen() {
           ))}
         </View>
       </ScrollView>
+
+      <CategoryPickerSheet
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        selectedId={cat || null}
+        onSelect={(id) =>
+          id == null ? router.push('/products') : router.replace(`/category/${id}`)
+        }
+      />
     </View>
   );
 }

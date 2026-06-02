@@ -24,12 +24,19 @@ export const styles = StyleSheet.create({
     paddingBottom: 14,
     borderBottomWidth: 1,
   },
-  count: {
-    fontFamily: fonts.sans,
-    fontSize: fontSize.md,
+  countRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: screenPadding,
     marginTop: 16,
     marginBottom: 14,
+  },
+  count: {
+    fontFamily: fonts.sans,
+    fontSize: fontSize.md,
+    flexShrink: 1,
+    paddingRight: 12,
   },
   grid: {
     paddingHorizontal: screenPadding,

@@ -69,7 +69,11 @@ export function normalizeProduct(p) {
     ? p.measurements.map(normalizeMeasurement).filter(Boolean)
     : [];
   return {
-    id: String(p.id),
+    // `id` IS the stock_id on full list/detail shapes. Splash tag stubs omit
+    // `id` and carry only stock_id/product_id, so fall back to those — keeping
+    // a stub's id equal to the full product's id so they de-dupe and route to
+    // the same PDP.
+    id: String(p.id ?? p.stock_id ?? p.product_id ?? ''),
     productId: p.product_id ?? p.id,
     stockId: p.stock_id ?? p.id,
     name,

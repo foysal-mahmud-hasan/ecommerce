@@ -147,10 +147,11 @@ export default function ShopScreenPharma() {
       .map((b) => ({
         id: b.title,
         title: b.title,
-        products: sortInStockFirst(Array.from(b.products.values()), { hideOutOfStock: true }).slice(
-          0,
-          wideCount,
-        ),
+        // Home tag rails show their products even when out of stock (OOS sinks
+        // to the end via sortInStockFirst's default), per user choice — these
+        // are merchant-curated promo rails. Browse OOS-hiding stays on
+        // elsewhere (catalog/category/related/search-featured).
+        products: sortInStockFirst(Array.from(b.products.values())).slice(0, wideCount),
       }))
       .filter((rail) => rail.products.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps

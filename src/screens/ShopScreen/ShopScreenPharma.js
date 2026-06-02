@@ -134,15 +134,15 @@ export default function ShopScreenPharma() {
   // (or whichever tag splash returns first). Bootstrap pre-warms these tags
   // so by the time the user scrolls here, productsForTag returns objects.
   const mostSearched = useMemo(() => {
-    const fromTag = sortInStockFirst(productsForTag(topSellerTag?.id)).slice(0, wideCount);
+    const fromTag = sortInStockFirst(productsForTag(topSellerTag?.id), { hideOutOfStock: true }).slice(0, wideCount);
     if (fromTag.length > 0) return fromTag;
     // Fallback while warmup is pending — show whatever is already in cache.
-    return sortInStockFirst(all).slice(0, wideCount);
+    return sortInStockFirst(all, { hideOutOfStock: true }).slice(0, wideCount);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [all, tagProducts, topSellerTag, wideCount]);
 
   const onSale = useMemo(
-    () => sortInStockFirst(all.filter((p) => p.was)).slice(0, 8),
+    () => sortInStockFirst(all.filter((p) => p.was), { hideOutOfStock: true }).slice(0, 8),
     [all],
   );
 
@@ -150,9 +150,9 @@ export default function ShopScreenPharma() {
   // — falling back to the first tag's overflow if the merchant hasn't
   // flagged a second group.
   const vitaminProducts = useMemo(() => {
-    const fromTag = sortInStockFirst(productsForTag(vitaminTag?.id)).slice(0, wideCount);
+    const fromTag = sortInStockFirst(productsForTag(vitaminTag?.id), { hideOutOfStock: true }).slice(0, wideCount);
     if (fromTag.length > 0) return fromTag;
-    return sortInStockFirst([...all].slice(-16).reverse()).slice(0, wideCount);
+    return sortInStockFirst([...all].slice(-16).reverse(), { hideOutOfStock: true }).slice(0, wideCount);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [all, tagProducts, vitaminTag, wideCount]);
 

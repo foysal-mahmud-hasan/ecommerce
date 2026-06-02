@@ -40,14 +40,14 @@ export default function ShopScreenRestaurant() {
   const all = productsCache?.all || [];
   const heroProduct = useMemo(() => all[0] || null, [all]);
   const popular = useMemo(
-    () => sortInStockFirst(all.slice(4, 4 + popularCount)),
+    () => sortInStockFirst(all.slice(4, 4 + popularCount), { hideOutOfStock: true }),
     [all, popularCount],
   );
 
   const productsByCategory = useMemo(() => {
     const m = {};
     (categories || []).forEach((c) => {
-      m[c.id] = sortInStockFirst(productsCache?.byCategoryId?.[c.id] || []).slice(0, 6);
+      m[c.id] = sortInStockFirst(productsCache?.byCategoryId?.[c.id] || [], { hideOutOfStock: true }).slice(0, 6);
     });
     return m;
   }, [categories, productsCache]);

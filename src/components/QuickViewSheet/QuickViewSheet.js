@@ -86,7 +86,7 @@ export default function QuickViewSheet() {
   const related = useMemo(() => {
     if (!product) return [];
     const list = productsCache?.byCategoryId?.[String(product.categoryId)] || [];
-    return sortInStockFirst(list.filter((p) => p.id !== product.id)).slice(0, 12);
+    return sortInStockFirst(list.filter((p) => p.id !== product.id), { hideOutOfStock: true }).slice(0, 12);
   }, [product, productsCache]);
 
   const totalQty = useMemo(

@@ -47,7 +47,7 @@ export default function SearchScreen() {
   }, [showResults, productsCache, activeCat, q]);
 
   const featured = useMemo(
-    () => sortInStockFirst(productsCache?.all || []).slice(0, 4),
+    () => sortInStockFirst(productsCache?.all || [], { hideOutOfStock: true }).slice(0, 4),
     [productsCache],
   );
 

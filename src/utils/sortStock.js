@@ -2,7 +2,12 @@
 // Restaurant mock items hardcode stock: 999, so they always pass.
 // Pharma API items use real stock counts. Items missing the field
 // (defensive) are treated as out-of-stock.
-export function sortInStockFirst(list) {
+//
+// `hideOutOfStock` drops OOS items entirely instead of sinking them to the
+// end. We hide OOS on every browse surface (category, home rails, related
+// products, catalog browse) and only ever show them — sorted last — when the
+// user is actively searching from the top search bar. See decisions.md.
+export function sortInStockFirst(list, { hideOutOfStock = false } = {}) {
   if (!Array.isArray(list) || list.length === 0) return list || [];
   const inStock = [];
   const outOfStock = [];
@@ -10,7 +15,7 @@ export function sortInStockFirst(list) {
     if ((p?.stock ?? 0) > 0) inStock.push(p);
     else outOfStock.push(p);
   }
-  return inStock.concat(outOfStock);
+  return hideOutOfStock ? inStock : inStock.concat(outOfStock);
 }
 
 export function isInStock(product) {

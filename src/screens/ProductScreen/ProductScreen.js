@@ -91,7 +91,7 @@ export default function ProductScreen() {
   const related = useMemo(() => {
     if (!product) return [];
     const list = productsCache?.byCategoryId?.[String(product.categoryId)] || [];
-    return sortInStockFirst(list.filter((p) => p.id !== product.id)).slice(0, 8);
+    return sortInStockFirst(list.filter((p) => p.id !== product.id), { hideOutOfStock: true }).slice(0, 8);
   }, [product, productsCache]);
 
   if (!product) {

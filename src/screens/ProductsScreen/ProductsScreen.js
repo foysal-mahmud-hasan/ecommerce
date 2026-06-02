@@ -104,7 +104,10 @@ export default function ProductsScreen() {
     if (sort === 'price-asc') list = [...list].sort((a, b) => a.price - b.price);
     else if (sort === 'price-desc') list = [...list].sort((a, b) => b.price - a.price);
     else if (sort === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name));
-    return sortInStockFirst(list);
+    // Active query = the user is searching (the top-bar search routes here as
+    // ?q=…), so surface OOS too, sunk to the end. Plain browsing/category
+    // scoping hides OOS entirely. See decisions.md.
+    return sortInStockFirst(list, { hideOutOfStock: !debouncedQuery.trim() });
   }, [productsCache, activeCategoryId, debouncedQuery, sort]);
 
   // Reset paging when filters change. Setting state in the same render as

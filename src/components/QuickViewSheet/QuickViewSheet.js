@@ -1,5 +1,5 @@
 import { usePathname, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useStore } from '../../store/StoreContext';
 import { useTheme } from '../../theme';
@@ -72,16 +72,31 @@ export default function QuickViewSheet() {
   const [qtyByUnit, setQtyByUnit] = useState({});
   const [relatedOpen, setRelatedOpen] = useState(false);
 
-  useEffect(() => {
-    if (!product) return;
+  // Default quantities for the current product: first unit = 1, rest 0. Reused
+  // on product change and after an add (so the steppers visibly reset).
+  const buildSeed = useCallback(() => {
     const seed = {};
     measurements.forEach((m, i) => {
       const key = m.unitId ?? m.unit_id ?? `idx-${i}`;
       seed[key] = i === 0 ? 1 : 0;
     });
-    setQtyByUnit(seed);
-    setRelatedOpen(false);
-  }, [product, measurements]);
+    return seed;
+  }, [measurements]);
+
+  useEffect(() => {
+    if (!product) return;
+    setQtyByUnit(buildSeed());
+  }, [product, buildSeed]);
+
+  // Collapse the related grid only on a FRESH open (modal closed→open). Within
+  // the modal, swapping products keeps quickViewProductId truthy, so the grid
+  // stays open and refreshes to the new product's related items.
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    const isOpen = !!quickViewProductId;
+    if (isOpen && !wasOpenRef.current) setRelatedOpen(false);
+    wasOpenRef.current = isOpen;
+  }, [quickViewProductId]);
 
   const related = useMemo(() => {
     if (!product) return [];
@@ -107,8 +122,12 @@ export default function QuickViewSheet() {
         });
       }
     });
-    closeQuickView();
-  }, [product, measurements, qtyByUnit, addToCart, closeQuickView]);
+    // Keep the modal open so the user can keep shopping (browse related items,
+    // add more). addToCart already shows the "Added to cart" toast. Reset the
+    // steppers to default so the row clears and a stray second press doesn't
+    // silently re-add. The modal closes only on explicit close (X/backdrop).
+    setQtyByUnit(buildSeed());
+  }, [product, measurements, qtyByUnit, addToCart, buildSeed]);
 
   const handleMore = useCallback(() => {
     if (!product) return;
@@ -433,6 +452,9 @@ export default function QuickViewSheet() {
                 isMobile={isMobile}
                 onAdd={(p) => {
                   addToCart(p.id, 1, { unit: p.unit, unitId: p.unitId, price: p.price });
+                  // Bring the just-added product up as the one shown — "the
+                  // product the user selects last." Modal stays open.
+                  openQuickView(p.id);
                 }}
                 onOpen={(p) => openQuickView(p.id)}
               />
@@ -452,30 +474,25 @@ export default function QuickViewSheet() {
               backgroundColor: t.surface,
             }}
           >
+            {/* Order: related-grid toggle · More · Add to Cart (primary, right). */}
             <Pressable
-              onPress={handleAdd}
-              disabled={totalQty === 0}
+              onPress={() => setRelatedOpen((v) => !v)}
               accessibilityRole="button"
-              accessibilityLabel="Add to cart"
+              accessibilityLabel={relatedOpen ? 'Hide related items' : 'Show related items'}
               style={({ pressed }) => ({
-                flex: 1,
-                paddingVertical: 12,
-                borderRadius: 999,
+                width: 44,
+                height: 44,
+                borderRadius: 22,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: totalQty === 0 ? t.surfaceAlt : t.terra,
-                opacity: pressed ? 0.9 : 1,
+                backgroundColor: relatedOpen ? t.terra : t.surfaceAlt,
+                borderWidth: 1,
+                borderColor: relatedOpen ? t.terra : t.line,
+                opacity: pressed ? 0.85 : 1,
+                alignSelf: 'center',
               })}
             >
-              <Text
-                style={{
-                  fontFamily: t.fonts.sansSemiBold,
-                  fontSize: 14,
-                  color: totalQty === 0 ? t.ink3 : '#FFFFFF',
-                }}
-              >
-                Add to Cart
-              </Text>
+              <IconGrid size={18} color={relatedOpen ? '#FFFFFF' : t.ink} />
             </Pressable>
             <Pressable
               onPress={handleMore}
@@ -502,23 +519,29 @@ export default function QuickViewSheet() {
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => setRelatedOpen((v) => !v)}
+              onPress={handleAdd}
+              disabled={totalQty === 0}
               accessibilityRole="button"
-              accessibilityLabel={relatedOpen ? 'Hide related items' : 'Show related items'}
+              accessibilityLabel="Add to cart"
               style={({ pressed }) => ({
-                width: 44,
-                height: 44,
-                borderRadius: 22,
+                flex: 1,
+                paddingVertical: 12,
+                borderRadius: 999,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: relatedOpen ? t.terra : t.surfaceAlt,
-                borderWidth: 1,
-                borderColor: relatedOpen ? t.terra : t.line,
-                opacity: pressed ? 0.85 : 1,
-                alignSelf: 'center',
+                backgroundColor: totalQty === 0 ? t.surfaceAlt : t.terra,
+                opacity: pressed ? 0.9 : 1,
               })}
             >
-              <IconGrid size={18} color={relatedOpen ? '#FFFFFF' : t.ink} />
+              <Text
+                style={{
+                  fontFamily: t.fonts.sansSemiBold,
+                  fontSize: 14,
+                  color: totalQty === 0 ? t.ink3 : '#FFFFFF',
+                }}
+              >
+                Add to Cart
+              </Text>
             </Pressable>
           </View>
         </Pressable>
